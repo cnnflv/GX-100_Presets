@@ -13,12 +13,11 @@ What you get for each request:
 •	The spec (a small JSON document) that you can edit by hand and regenerate, or save and share.
 
 2. Quick start
-
-1.	Open GX100_Preset_Studio.html in Chrome or Edge (double-click the file). Choose your language with the flags at the top right — English is the default.
-2.	Describe the preset you want in the first field. Be specific: song and artist, which part (rhythm, solo, intro), which version (studio or a particular live recording). Or describe the sound in words.
-3.	Select your guitar model, pickup type and pickup position, and whether you want a single chain (one amp), a dual chain (two amps in parallel through DIVIDER/MIXER) or let the page decide.
-4.	Choose the engine: one of the API engines (Claude, ChatGPT, Gemini or Meta — each needs its own API key, see section 4) or "copy/paste" (no key: you carry the text to any AI chat yourself, see section 5). Press "Create preset".
-5.	Read the notes, adjust the file name if you like, then "Save preset .tsl" and/or send it to the pedal with "Try" or "Save to memory" (section 6).
+- Open GX100_Preset_Studio.html in Chrome or Edge (double-click the file). Choose your language with the flags at the top right — English is the default.
+- Describe the preset you want in the first field. Be specific: song and artist, which part (rhythm, solo, intro), which version (studio or a particular live recording). Or describe the sound in words.
+- Select your guitar model, pickup type and pickup position, and whether you want a single chain (one amp), a dual chain (two amps in parallel through DIVIDER/MIXER) or let the page decide.
+- Choose the engine: one of the API engines (Claude, ChatGPT, Gemini or Meta — each needs its own API key, see section 4) or "copy/paste" (no key: you carry the text to any AI chat yourself, see section 5). Press "Create preset".
+- Read the notes, adjust the file name if you like, then "Save preset .tsl" and/or send it to the pedal with "Try" or "Save to memory" (section 6).
 
 The page, section by section
 
