@@ -2,7 +2,7 @@
 
 Create presets for the **BOSS GX-100** from a song, an album, an artist's style or a sound description — in a single HTML file.
 
-**Open it here:** [https://USERNAME.github.io/gx100-preset-studio/](https://github.com/cnnflv/GX-100_Presets)
+**Open it here:** (https://github.com/cnnflv/GX-100_Presets)
 
 - Designs the full patch (amp model, drive pedals, EQ, modulation, delay, reverb) with an AI engine of your choice: Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google), Meta (Muse Spark), or copy/paste with any AI chat (ChatGPT, Gemini, Copilot, Meta AI, Claude…).
 - Compensates gain and EQ for **your** guitar (model, pickup type, pickup position).
