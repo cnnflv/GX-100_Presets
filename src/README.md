@@ -3,6 +3,7 @@ User guide, API setup, compatibility and license
 Version 1.1 · November 2026 · Author: Flavio Canonico
 
 1. What GX-100 Preset Studio is
+
 GX-100 Preset Studio is a single HTML file that creates presets (patches) for the BOSS GX-100 guitar effects processor. You describe the sound you want — a specific song, an album, the style of an artist, or simply a sound in words — and the page designs a complete patch for you: amplifier model, drive pedals, equaliser, modulation, delay and reverb, with every parameter set and explained.
 The page works on Windows, macOS, Linux and ChromeOS. Everything it needs is embedded in the file: the effect and parameter definitions of BOSS TONE STUDIO for GX-100 (version 2.0.3), the 100 factory presets used as starting templates, the guitar compensation profiles, the .tsl file generator and the USB (MIDI SysEx) sender. Nothing is installed on your computer and no server is involved, apart from the optional call to the AI provider of your choice (Anthropic Claude, OpenAI ChatGPT, Google Gemini or Meta) that does the actual sound design.
 What you get for each request:
@@ -12,13 +13,11 @@ What you get for each request:
 •	The spec (a small JSON document) that you can edit by hand and regenerate, or save and share.
 
 2. Quick start
+
 1.	Open GX100_Preset_Studio.html in Chrome or Edge (double-click the file). Choose your language with the flags at the top right — English is the default.
 2.	Describe the preset you want in the first field. Be specific: song and artist, which part (rhythm, solo, intro), which version (studio or a particular live recording). Or describe the sound in words.
-
 3.	Select your guitar model, pickup type and pickup position, and whether you want a single chain (one amp), a dual chain (two amps in parallel through DIVIDER/MIXER) or let the page decide.
-
 4.	Choose the engine: one of the API engines (Claude, ChatGPT, Gemini or Meta — each needs its own API key, see section 4) or "copy/paste" (no key: you carry the text to any AI chat yourself, see section 5). Press "Create preset".
-
 5.	Read the notes, adjust the file name if you like, then "Save preset .tsl" and/or send it to the pedal with "Try" or "Save to memory" (section 6).
 
 The page, section by section
