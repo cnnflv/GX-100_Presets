@@ -78,9 +78,9 @@ All engines receive the same instructions and the same GX-100 reference data, an
 Security notes. Treat every key like a password: anyone with the key can spend your credit. Do not share a browser profile where the keys are stored; you can revoke a key at any time from the provider console. When you open the HTML file from disk (file://), Chrome shares the stored keys with every other local HTML file opened in the same profile.
 
 5. Using an AI chat without an API key (copy/paste engine)
-1.	Select "Engine: copy/paste" and press "Prepare text", then "Copy".
-2.	Paste the text into any AI chat (Claude, ChatGPT, Gemini, Copilot, Meta AI…) and send it. The assistant answers with a JSON block.
-3.	Copy the whole reply, paste it in the "Step 2" box and press "Create preset from reply".
+- Select "Engine: copy/paste" and press "Prepare text", then "Copy".
+- Paste the text into any AI chat (Claude, ChatGPT, Gemini, Copilot, Meta AI…) and send it. The assistant answers with a JSON block.
+- Copy the whole reply, paste it in the "Step 2" box and press "Create preset from reply".
 If the page reports an error (for example an unknown effect label), paste the error message back to the chat and ask it to fix the JSON, then try again. The text prepared by the page is long (about 50,000 characters) because it contains the full list of GX-100 effects, parameters and labels the model needs to be precise; some free chats may truncate very long messages.
 
 6. Importing a preset manually
