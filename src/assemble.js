@@ -1,0 +1,11 @@
+const fs=require('fs');
+let h=fs.readFileSync('page.html','utf8');
+const rep=(k,v)=>{ if(!h.includes(k)) throw new Error('placeholder '+k); h=h.split(k).join(v); };
+const safe=s=>s.replace(/<\/script/gi,'<\\/script');
+rep('/*__DATA__*/null', safe(fs.readFileSync('data/gx100_data.json','utf8').trim()));
+rep('/*__PROFILES__*/null', safe(fs.readFileSync('scripts/guitar_profiles.json','utf8').trim()));
+rep('/*__SYSPROMPT__*/""', safe(JSON.stringify(fs.readFileSync('system_prompt.md','utf8'))));
+rep('/*__I18N__*/', safe(fs.readFileSync('i18n.js','utf8')));
+rep('/*__ENGINE__*/', safe(fs.readFileSync('engine.js','utf8')));
+rep('/*__MIDI__*/', safe(fs.readFileSync('midi.js','utf8')));
+fs.writeFileSync('GX100_Preset_Studio.html',h); console.log('ok', h.length);

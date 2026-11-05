@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GX-100 Preset Studio</title>
+<style>
+  :root { --bg:#14161a; --panel:#1d2026; --line:#2e323a; --text:#e8e9ec; --muted:#9aa0ab; --acc:#ff8a3d; --acc2:#3d9bff; --ok:#4ccb7a; --err:#ff5c5c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; letter-spacing:.3px; white-space:nowrap; }
+  header h1 span { color:var(--acc); }
+  header .sub { color:var(--muted); font-size:13px; flex:1; min-width:200px; }
+  .flags { display:flex; gap:6px; margin-left:auto; }
+  .flags button { background:transparent; border:2px solid transparent; border-radius:6px; padding:2px; width:40px; height:30px; cursor:pointer; opacity:.55; }
+  .flags button svg { width:100%; height:100%; display:block; border-radius:3px; }
+  .flags button.on { opacity:1; border-color:var(--acc); }
+  .flags button:hover { opacity:1; }
+  main { max-width:1100px; margin:0 auto; padding:20px 24px 60px; display:grid; gap:18px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 20px; }
+  section h2 { margin:0 0 14px; font-size:15px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); }
+  label { display:block; font-size:13px; color:var(--muted); margin:0 0 4px; }
+  input[type=text], input[type=password], select, textarea { width:100%; background:#111317; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:9px 10px; font:inherit; }
+  textarea { resize:vertical; min-height:90px; }
+  textarea.mono { font:13px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  .row { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); margin-bottom:12px; }
+  .field { margin-bottom:12px; }
+  button { background:var(--acc); color:#111; border:0; border-radius:7px; padding:10px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  button.secondary { background:#2a2e36; color:var(--text); }
+  button.blue { background:var(--acc2); color:#fff; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .status { margin-top:10px; font-size:13px; color:var(--muted); white-space:pre-wrap; }
+  .status.err { color:var(--err); } .status.ok { color:var(--ok); }
+  details { border-top:1px solid var(--line); margin-top:12px; padding-top:10px; }
+  summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button { background:#2a2e36; color:var(--muted); padding:7px 12px; font-weight:500; }
+  .tabs button.on { background:#3a3f49; color:var(--text); }
+  .hidden { display:none !important; }
+  .hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .log { font:12px/1.4 ui-monospace, Menlo, Consolas, monospace; background:#111317; border:1px solid var(--line); border-radius:7px; padding:8px 10px; max-height:160px; overflow:auto; white-space:pre-wrap; margin-top:10px; color:var(--muted); }
+  .badge { display:inline-block; font-size:11px; padding:2px 7px; border-radius:10px; background:#2a2e36; color:var(--muted); margin-left:6px; }
+  .inline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .inline input[type=text] { width:110px; }
+  footer { text-align:center; font-size:12px; color:var(--muted); padding:0 24px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>GX-100 <span>Preset Studio</span></h1>
+  <div class="sub" data-i18n="sub"></div>
+  <div class="flags" id="flags" title="Language"></div>
+</header>
+<main>
+
+<section>
+  <h2 data-i18n="s1"></h2>
+  <div class="field">
+    <label for="req" data-i18n="reqLabel"></label>
+    <textarea id="req" data-i18n-ph="reqPh"></textarea>
+  </div>
+  <div class="row">
+    <div><label for="gModel" data-i18n="gModel"></label><select id="gModel"></select></div>
+    <div><label for="gPickup" data-i18n="gPickup"></label><select id="gPickup"></select></div>
+    <div><label for="gPos" data-i18n="gPos"></label><select id="gPos"></select></div>
+    <div><label for="chain" data-i18n="chain"></label><select id="chain"><option value="auto" data-i18n="chainAuto"></option><option value="single" data-i18n="chainSingle"></option><option value="dual" data-i18n="chainDual"></option></select></div>
+  </div>
+  <div class="row">
+    <div><label for="engine" data-i18n="engineLabel"></label><select id="engine"></select></div>
+    <div id="engineHintBox"><label>&nbsp;</label><div id="engineHint" class="hint"></div></div>
+  </div>
+  <div id="paneApi">
+    <div class="actions">
+      <button id="btnCreate" type="button" data-i18n="btnCreate"></button>
+      <span id="apiState" class="hint"></span>
+    </div>
+    <div id="apiStatus" class="status"></div>
+    <details id="apiSettings">
+      <summary id="apiSettingsSummary"></summary>
+      <div class="row" style="margin-top:10px">
+        <div><label for="apiKey" id="apiKeyLabel"></label><input id="apiKey" type="password"></div>
+        <div><label for="apiModel" data-i18n="apiModel"></label><input id="apiModel" type="text"></div>
+        <div><label for="apiSearch" data-i18n="apiSearch"></label><select id="apiSearch"><option value="1" data-i18n="searchOn"></option><option value="0" data-i18n="searchOff"></option></select></div>
+      </div>
+      <div class="hint" id="apiHint"></div>
+    </details>
+  </div>
+  <div id="panePaste" class="hidden">
+    <div class="field">
+      <label data-i18n="step1"></label>
+      <textarea id="promptOut" class="mono" readonly style="min-height:120px"></textarea>
+      <div class="actions" style="margin-top:8px"><button id="btnPrompt" class="secondary" type="button" data-i18n="btnPrompt"></button><button id="btnCopy" class="secondary" type="button" data-i18n="btnCopy"></button><span id="copyState" class="hint"></span></div>
+    </div>
+    <div class="field">
+      <label for="pasteIn" data-i18n="step2"></label>
+      <textarea id="pasteIn" class="mono" placeholder='{"suggested_name": ..., "notes": ..., "spec": {...}}'></textarea>
+    </div>
+    <div class="actions"><button id="btnParse" type="button" data-i18n="btnParse"></button></div>
+    <div id="pasteStatus" class="status"></div>
+  </div>
+</section>
+
+<section id="secResult">
+  <h2><span data-i18n="s2"></span> <span id="resBadge" class="badge" data-i18n="none"></span></h2>
+  <div class="field">
+    <label for="notes" data-i18n="notesLabel"></label>
+    <textarea id="notes" class="mono" style="min-height:260px" data-i18n-ph="notesPh"></textarea>
+  </div>
+  <div class="row">
+    <div><label for="pName" data-i18n="pName"></label><input id="pName" type="text" placeholder="Preset"></div>
+    <div><label for="pPatch" data-i18n="pPatch"></label><input id="pPatch" type="text" maxlength="16" readonly></div>
+  </div>
+  <div class="actions">
+    <button id="btnSaveTsl" type="button" disabled data-i18n="btnSaveTsl"></button>
+    <button id="btnSaveMd" class="secondary" type="button" disabled data-i18n="btnSaveMd"></button>
+    <button id="btnSaveSpec" class="secondary" type="button" disabled data-i18n="btnSaveSpec"></button>
+  </div>
+  <details>
+    <summary data-i18n="specSummary"></summary>
+    <textarea id="specOut" class="mono" style="min-height:200px; margin-top:8px"></textarea>
+    <div class="actions" style="margin-top:8px"><button id="btnRebuild" class="secondary" type="button" data-i18n="btnRebuild"></button></div>
+    <pre id="dumpOut" class="log"></pre>
+  </details>
+</section>
+
+<section>
+  <h2 data-i18n="s3"></h2>
+  <div class="inline">
+    <button id="btnSendTemp" class="blue" type="button" disabled data-i18n="btnSendTemp"></button>
+    <button id="btnSendSave" class="blue" type="button" disabled data-i18n="btnSendSave"></button>
+    <input id="slot" type="text" value="U50-4" placeholder="U05-2">
+    <label style="display:inline; margin:0"><input id="verify" type="checkbox" checked> <span data-i18n="verify"></span></label>
+    <button id="btnBackup" class="secondary" type="button" data-i18n="btnBackup"></button>
+  </div>
+  <div class="hint" data-i18n="midiHint"></div>
+  <div id="midiLog" class="log"></div>
+</section>
+
+<section>
+  <h2 data-i18n="s4"></h2>
+  <div class="hint" data-i18n="importHint"></div>
+</section>
+</main>
+<footer>GX-100 Preset Studio · © Flavio Canonico · freeware · BOSS, GX-100 and BOSS TONE STUDIO are trademarks of Roland Corporation (not affiliated)</footer>
+
+<script>
+const GX100_DATA = /*__DATA__*/null;
+const GUITAR_PROFILES = /*__PROFILES__*/null;
+const SYSTEM_PROMPT = /*__SYSPROMPT__*/"";
+/*__I18N__*/
+/*__ENGINE__*/
+/*__MIDI__*/
+
+const $ = id => document.getElementById(id);
+const store = { get: (k, d) => { try { const v = localStorage.getItem('gx100.' + k); return v === null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('gx100.' + k, v); } catch (e) {} } };
+
+/* ---------- lingua ---------- */
+let LANG = store.get('lang', 'en');
+if (!I18N[LANG]) LANG = 'en';
+const t = (k, ...a) => { let s = (I18N[LANG][k] !== undefined ? I18N[LANG][k] : I18N.en[k]) || k; a.forEach((v, i) => { s = s.split('{' + i + '}').join(v); }); return s; };
+const ENGINE_LABELS = {
+  en: { title:'parameter justification', colSection:'Section', colValues:'Values set', colWhy:'Reason', refGuitar:'Reference guitar (original)', yourGuitar:'Your guitar', presetFile:'Preset file', comp:'Compensation', compWas:'comp.: was', compApplied:'Guitar compensation applied to the values marked *comp.*.', noUser:'no user guitar given: no compensation', noRef:'reference_guitar missing: no compensation', ref:'reference', user:'your guitar', dOut:'Δ output', dEq:'Δ EQ', geqOn:'GRAPHIC EQ: was OFF, enabled for compensation', noEq:'AIRD PREAMP (no EQ in chain)' },
+  it: { title:'giustificazione parametri', colSection:'Sezione', colValues:'Valori impostati', colWhy:'Motivo della scelta', refGuitar:'Chitarra di riferimento (originale)', yourGuitar:'Tua chitarra', presetFile:'File preset', comp:'Compensazione', compWas:'comp.: era', compApplied:'Compensazione chitarra applicata ai valori marcati *comp.*.', noUser:'nessuna chitarra utente indicata: nessuna compensazione', noRef:'reference_guitar mancante: nessuna compensazione', ref:'riferimento', user:'tua chitarra', dOut:'Δ uscita', dEq:'Δ EQ', geqOn:'GRAPHIC EQ: era OFF, attivato per la compensazione', noEq:'AIRD PREAMP (nessun EQ in catena)' },
+  fr: { title:'justification des paramètres', colSection:'Section', colValues:'Valeurs réglées', colWhy:'Raison du choix', refGuitar:'Guitare de référence (originale)', yourGuitar:'Votre guitare', presetFile:'Fichier preset', comp:'Compensation', compWas:'comp. : était', compApplied:'Compensation guitare appliquée aux valeurs marquées *comp.*.', noUser:'aucune guitare utilisateur : pas de compensation', noRef:'reference_guitar absente : pas de compensation', ref:'référence', user:'votre guitare', dOut:'Δ sortie', dEq:'Δ EQ', geqOn:'GRAPHIC EQ : était OFF, activé pour la compensation', noEq:'AIRD PREAMP (pas d\'EQ dans la chaîne)' },
+  de: { title:'Begründung der Parameter', colSection:'Abschnitt', colValues:'Eingestellte Werte', colWhy:'Grund der Wahl', refGuitar:'Referenzgitarre (Original)', yourGuitar:'Deine Gitarre', presetFile:'Preset-Datei', comp:'Kompensation', compWas:'Komp.: war', compApplied:'Gitarrenkompensation auf die mit *comp.* markierten Werte angewendet.', noUser:'keine Benutzergitarre angegeben: keine Kompensation', noRef:'reference_guitar fehlt: keine Kompensation', ref:'Referenz', user:'deine Gitarre', dOut:'Δ Ausgang', dEq:'Δ EQ', geqOn:'GRAPHIC EQ: war OFF, für die Kompensation aktiviert', noEq:'AIRD PREAMP (kein EQ in der Kette)' },
+  es: { title:'justificación de parámetros', colSection:'Sección', colValues:'Valores ajustados', colWhy:'Motivo de la elección', refGuitar:'Guitarra de referencia (original)', yourGuitar:'Tu guitarra', presetFile:'Archivo del preset', comp:'Compensación', compWas:'comp.: era', compApplied:'Compensación de guitarra aplicada a los valores marcados *comp.*.', noUser:'sin guitarra del usuario: sin compensación', noRef:'falta reference_guitar: sin compensación', ref:'referencia', user:'tu guitarra', dOut:'Δ salida', dEq:'Δ EQ', geqOn:'GRAPHIC EQ: estaba OFF, activado para la compensación', noEq:'AIRD PREAMP (sin EQ en la cadena)' },
+  zh: { title:'参数说明', colSection:'模块', colValues:'设定值', colWhy:'选择理由', refGuitar:'参考吉他（原始）', yourGuitar:'你的吉他', presetFile:'预设文件', comp:'补偿', compWas:'补偿前', compApplied:'已对标有 *comp.* 的值应用吉他补偿。', noUser:'未指定用户吉他：不进行补偿', noRef:'缺少 reference_guitar：不进行补偿', ref:'参考', user:'你的吉他', dOut:'Δ 输出', dEq:'Δ EQ', geqOn:'GRAPHIC EQ：原为 OFF，已为补偿开启', noEq:'AIRD PREAMP（链中无 EQ）' },
+  ja: { title:'パラメーターの根拠', colSection:'セクション', colValues:'設定値', colWhy:'選択理由', refGuitar:'リファレンスギター（オリジナル）', yourGuitar:'あなたのギター', presetFile:'プリセットファイル', comp:'補正', compWas:'補正前', compApplied:'*comp.* の付いた値にギター補正を適用。', noUser:'ユーザーギター未指定：補正なし', noRef:'reference_guitar がありません：補正なし', ref:'リファレンス', user:'あなたのギター', dOut:'Δ 出力', dEq:'Δ EQ', geqOn:'GRAPHIC EQ：OFF だったため補正用に ON', noEq:'AIRD PREAMP（チェーンに EQ なし）' }
+};
+let E;
+function makeEngine() { E = createEngine(GX100_DATA, GUITAR_PROFILES, Object.assign({ pick: I18N[LANG].pick, pos: I18N[LANG].pos }, ENGINE_LABELS[LANG] || ENGINE_LABELS.en)); }
+const TEMPLATES = ['LEAD DRIVE', 'SLOW DANCE', 'HI-GAIN LEAD', 'SUPER CLEAN/DS', 'ROTARY+ECHO', 'JC CLEAN'];
+let FULL_SYSTEM = '';
+function applyLang(l) {
+  LANG = l; store.set('lang', l); document.documentElement.lang = l;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('#flags button').forEach(b => b.classList.toggle('on', b.dataset.lang === l));
+  makeEngine(); FULL_SYSTEM = SYSTEM_PROMPT + E.referenceText(TEMPLATES);
+  fillGuitar();
+  const eng = $('engine'), cur = eng.value || store.get('engine', 'anthropic');
+  eng.innerHTML = Object.entries(PROVIDERS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('') + `<option value="paste">${t('pasteName')}</option>`;
+  eng.value = cur; refreshEngineUI();
+  if (current) $('resBadge').textContent = current.result.names.join(', ');
+}
+$('flags').innerHTML = Object.keys(I18N).map(l => `<button type="button" data-lang="${l}" title="${I18N[l]._name}">${FLAGS[l]}</button>`).join('');
+$('flags').onclick = e => { const b = e.target.closest('button'); if (b) applyLang(b.dataset.lang); };
+
+/* ---------- chitarra ---------- */
+function fillGuitar() {
+  const P = GUITAR_PROFILES;
+  const opt = (sel, items, cur) => { sel.innerHTML = items.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); if (cur) sel.value = cur; };
+  const pretty = s => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  opt($('gModel'), [...Object.keys(P.models).map(m => [m, pretty(m)]), ...Object.keys(P.body).map(b => ['body:' + b, t('otherBody') + ' ' + pretty(b)])], store.get('model', 'jackson_monarkh'));
+  opt($('gPickup'), Object.keys(P.pickup).map(k => [k, (I18N[LANG].pick || {})[k] || P.pickup[k].label]), store.get('pickup', 'humbucker_hot_bright'));
+  opt($('gPos'), Object.keys(P.position).map(k => [k, (I18N[LANG].pos || {})[k] || P.position[k].label]), store.get('position', 'bridge'));
+  for (const id of ['gModel', 'gPickup', 'gPos']) $(id).onchange = () => { store.set('model', $('gModel').value); store.set('pickup', $('gPickup').value); store.set('position', $('gPos').value); };
+}
+function userGuitar() {
+  const m = $('gModel').value;
+  const g = { pickup: $('gPickup').value, position: $('gPos').value };
+  if (m.startsWith('body:')) g.body = m.slice(5); else g.model = m;
+  return g;
+}
+function guitarText() { const g = userGuitar(); return `${g.model || 'body ' + g.body} / ${g.pickup} (${I18N.en.pick[g.pickup]}) / ${g.position} (${I18N.en.pos[g.position]})`; }
+
+/* ---------- messaggio utente ---------- */
+function userMessage() {
+  const req = $('req').value.trim();
+  if (!req) throw new Error(t('errReq'));
+  const chain = { auto: t('chainAutoMsg'), single: t('chainSingleMsg'), dual: t('chainDualMsg') }[$('chain').value] || t('chainAutoMsg');
+  return `LINGUA / LANGUAGE: ${I18N[LANG]._lang} (write "notes", "description" and every "why" in this language).\n\nRICHIESTA / REQUEST: ${req}\n\nUSER GUITAR (compensation handled by the page): ${guitarText()}.\nCHAIN: ${chain}.\n\nReturn only the requested JSON block.`;
+}
+
+/* ---------- risultato ---------- */
+let current = null;
+function setStatus(id, msg, cls) { const el = $(id); el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+function extractJson(text) {
+  const m = /```json\s*([\s\S]*?)```/i.exec(text) || /```\s*([\s\S]*?)```/.exec(text);
+  let s = m ? m[1] : text;
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b < 0) throw new Error(t('noJson'));
+  s = s.slice(a, b + 1).replace(/^\s*\/\/.*$/gm, '');
+  return JSON.parse(s);
+}
+function buildFromAnswer(obj) {
+  const spec = obj.spec || obj;
+  if (!spec.patches) throw new Error(t('noPatches'));
+  spec.guitar = userGuitar();
+  const name = (obj.suggested_name || spec.liveset || 'Preset').toString().replace(/[^\w\-]+/g, '_').slice(0, 30);
+  const result = E.buildTsl(spec, name + '.tsl');
+  const notes = [obj.notes || '', '', result.md, '', '```', ...result.dumps.flat(), '```'].join('\n');
+  current = { spec, result, name, rawNotes: obj.notes || '' };
+  $('notes').value = notes;
+  $('pName').value = name;
+  $('pPatch').value = result.names.join(' / ');
+  $('specOut').value = JSON.stringify(spec, null, 2);
+  $('dumpOut').textContent = result.dumps.flat().join('\n') + '\n\n' + result.reports.map(r => r.join(' · ')).join('\n');
+  $('resBadge').textContent = result.names.join(', ');
+  for (const id of ['btnSaveTsl', 'btnSaveMd', 'btnSaveSpec', 'btnSendTemp', 'btnSendSave']) $(id).disabled = false;
+  $('secResult').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ---------- motori (provider) ---------- */
+/* Ogni adapter riceve { system, history:[{role:'user'|'assistant', text}], useSearch } e restituisce { text }. */
+async function postJson(url, headers, body) {
+  let r;
+  try { r = await fetch(url, { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, headers), body: JSON.stringify(body) }); }
+  catch (e) { const err = new Error(t('corsHint', url.replace(/^https?:\/\//, '').split('/')[0])); err.cors = true; throw err; }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && (j.error.message || j.error.type)) || ('HTTP ' + r.status));
+  return j;
+}
+const PROVIDERS = {
+  anthropic: { name: 'Claude (Anthropic)', model: 'claude-sonnet-5-5', keyPh: 'sk-ant-…', site: 'console.anthropic.com', search: true,
+    async call({ system, history, useSearch, key, model }) {
+      const body = { model, max_tokens: 16000, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages: history.map(m => ({ role: m.role, content: m.text })) };
+      if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }];
+      const j = await postJson('https://api.anthropic.com/v1/messages', { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body);
+      return { text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n') };
+    } },
+  openai: { name: 'ChatGPT (OpenAI)', model: 'gpt-5', keyPh: 'sk-…', site: 'platform.openai.com/api-keys', search: true,
+    call: o => responsesCall('https://api.openai.com/v1/responses', o) },
+  gemini: { name: 'Gemini (Google)', model: 'gemini-2.5-flash', keyPh: 'AIza…', site: 'aistudio.google.com/apikey', search: true,
+    async call({ system, history, useSearch, key, model }) {
+      const body = { systemInstruction: { parts: [{ text: system }] },
+        contents: history.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] })),
+        generationConfig: { maxOutputTokens: 16000 } };
+      if (useSearch) body.tools = [{ google_search: {} }];
+      const j = await postJson(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { 'x-goog-api-key': key }, body);
+      const c = j.candidates && j.candidates[0];
+      if (!c || !c.content) throw new Error((j.promptFeedback && j.promptFeedback.blockReason) || 'empty response');
+      return { text: (c.content.parts || []).map(p => p.text || '').join('\n') };
+    } },
+  meta: { name: 'Meta (Muse Spark)', model: 'muse-spark-1.3', keyPh: 'MODEL_API_KEY', site: 'dev.meta.ai', search: true,
+    call: o => responsesCall('https://api.meta.ai/v1/responses', o) },
+};
+/* Responses API (OpenAI e Meta Model API condividono il formato) */
+async function responsesCall(url, { system, history, useSearch, key, model }) {
+  const body = { model, instructions: system, max_output_tokens: 16000,
+    input: history.map(m => ({ role: m.role, content: m.text })) };
+  if (useSearch) body.tools = [{ type: 'web_search' }];
+  const j = await postJson(url, { 'authorization': 'Bearer ' + key }, body);
+  const text = (j.output || []).filter(o => o.type === 'message').flatMap(o => o.content || []).filter(c => c.type === 'output_text').map(c => c.text).join('\n');
+  if (!text && j.output_text) return { text: j.output_text };
+  if (!text) throw new Error(j.status === 'incomplete' ? 'incomplete: ' + JSON.stringify(j.incomplete_details || {}) : 'empty response');
+  return { text };
+}
+function currentProvider() { return PROVIDERS[$('engine').value] || null; }
+function keyFor(p) { return store.get('key.' + p, ''); }
+function refreshEngineUI() {
+  const id = $('engine').value, P = PROVIDERS[id];
+  $('paneApi').classList.toggle('hidden', !P); $('panePaste').classList.toggle('hidden', !!P);
+  if (!P) { $('engineHint').textContent = t('pasteHint'); preparePrompt(); return; }
+  $('engineHint').textContent = '';
+  $('apiSettingsSummary').textContent = t('apiSettingsP', P.name);
+  $('apiKeyLabel').textContent = t('apiKeyP', P.name);
+  $('apiKey').placeholder = P.keyPh; $('apiKey').value = keyFor(id);
+  $('apiModel').value = store.get('model.' + id, P.model);
+  $('apiHint').textContent = t('apiHintP', P.name, P.site);
+  refreshApiState();
+}
+async function createViaApi() {
+  const btn = $('btnCreate'); btn.disabled = true;
+  const id = $('engine').value, P = PROVIDERS[id];
+  try {
+    const um = userMessage();
+    const key = $('apiKey').value.trim();
+    if (!key) { $('apiSettings').open = true; $('apiKey').focus(); throw new Error(t('errKey')); }
+    const model = $('apiModel').value.trim() || P.model;
+    let useSearch = P.search && $('apiSearch').value === '1';
+    const history = [{ role: 'user', text: um }];
+    const run = s => P.call({ system: FULL_SYSTEM, history, useSearch: s, key, model });
+    setStatus('apiStatus', useSearch ? t('working') : t('working2'));
+    let reply;
+    try { reply = await run(useSearch); }
+    catch (e) { if (useSearch && !e.cors && /tool|search|not supported|invalid|unknown/i.test(e.message)) { useSearch = false; setStatus('apiStatus', t('noSearch')); reply = await run(false); } else throw e; }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try { buildFromAnswer(extractJson(reply.text)); setStatus('apiStatus', t('done'), 'ok'); return; }
+      catch (e) {
+        if (attempt === 2) throw e;
+        setStatus('apiStatus', t('fixing', e.message));
+        history.push({ role: 'assistant', text: reply.text });
+        history.push({ role: 'user', text: `Generator error: ${e.message}\nFix the spec and return the complete JSON again.` });
+        reply = await run(false);
+      }
+    }
+  } catch (e) { setStatus('apiStatus', t('error') + e.message, 'err'); }
+  finally { btn.disabled = false; }
+}
+
+/* ---------- copia/incolla ---------- */
+function preparePrompt() {
+  try { $('promptOut').value = FULL_SYSTEM + '\n\n---\n\n' + userMessage(); $('copyState').textContent = t('textReady', Math.round($('promptOut').value.length / 1000)); }
+  catch (e) { $('copyState').textContent = e.message; }
+}
+
+/* ---------- salvataggio ---------- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: type || 'application/octet-stream' }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const fileBase = () => ($('pName').value.trim() || 'Preset').replace(/\.tsl$/i, '');
+
+/* ---------- MIDI ---------- */
+function mlog(s) { const l = $('midiLog'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
+async function sendMidi(mode) {
+  if (!current) return;
+  const opts = { mode, slot: $('slot').value, verify: $('verify').checked, log: mlog, progress: (i, n) => { if (i === n || i % 10 === 0) mlog(t('sending', i, n)); } };
+  if (mode === 'user' && !confirm(t('confirmOverwrite', $('slot').value, current.result.names[0]))) return;
+  $('midiLog').textContent = '';
+  for (const id of ['btnSendTemp', 'btnSendSave']) $(id).disabled = true;
+  try { mlog(await GXMIDI.sendPatch(current.result.tsl, opts)); }
+  catch (e) { mlog(t('error') + e.message); }
+  finally { for (const id of ['btnSendTemp', 'btnSendSave']) $(id).disabled = false; }
+}
+
+/* ---------- init ---------- */
+$('apiKey').onchange = () => store.set('key.' + $('engine').value, $('apiKey').value.trim());
+$('apiModel').onchange = () => store.set('model.' + $('engine').value, $('apiModel').value.trim());
+$('engine').onchange = () => { store.set('engine', $('engine').value); refreshEngineUI(); };
+const refreshApiState = () => { $('apiState').textContent = $('apiKey').value.trim() ? t('keyPresent') : t('keyMissing'); };
+$('apiKey').oninput = refreshApiState;
+applyLang(LANG);
+$('btnCreate').onclick = createViaApi;
+$('btnPrompt').onclick = preparePrompt;
+$('btnCopy').onclick = async () => { preparePrompt(); try { await navigator.clipboard.writeText($('promptOut').value); $('copyState').textContent = t('copied'); } catch (e) { $('promptOut').select(); document.execCommand('copy'); $('copyState').textContent = t('copied'); } };
+$('btnParse').onclick = () => { try { buildFromAnswer(extractJson($('pasteIn').value)); setStatus('pasteStatus', t('done'), 'ok'); } catch (e) { setStatus('pasteStatus', t('error') + e.message + t('fixJson'), 'err'); } };
+$('btnRebuild').onclick = () => { try { const spec = JSON.parse($('specOut').value); buildFromAnswer({ spec, suggested_name: fileBase(), notes: current ? current.rawNotes : '' }); } catch (e) { alert(t('error') + e.message); } };
+$('btnSaveTsl').onclick = () => download(fileBase() + '.tsl', current.result.tslText, 'application/json');
+$('btnSaveMd').onclick = () => download(fileBase() + '_notes.md', $('notes').value, 'text/markdown');
+$('btnSaveSpec').onclick = () => download(fileBase() + '_spec.json', JSON.stringify(current.spec, null, 2), 'application/json');
+$('btnSendTemp').onclick = () => sendMidi('temp');
+$('btnSendSave').onclick = () => sendMidi('user');
+$('btnBackup').onclick = async () => {
+  $('midiLog').textContent = '';
+  try { const r = await GXMIDI.readSlot($('slot').value, { log: mlog }); download(`backup_${r.slot}.tsl`, JSON.stringify(r.tsl), 'application/json'); mlog(t('readSlot', r.slot, r.name)); }
+  catch (e) { mlog(t('error') + e.message); }
+};
+if (!GXMIDI.supported()) mlog(t('noMidi'));
+</script>
+</body>
+</html>
