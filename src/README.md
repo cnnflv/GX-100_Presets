@@ -73,7 +73,7 @@ Copy/paste	No key needed	Whatever chat you paste into (ChatGPT, Gemini, Copilot,
 4.5 Microsoft Copilot
 The consumer Microsoft Copilot has no public API, so it cannot be an API engine. You can still use it with the copy/paste engine: prepare the text in the page, paste it in the Copilot chat, then paste the JSON reply back into the page. The same applies to Meta AI inside WhatsApp or Messenger, to the free ChatGPT and Gemini apps, and to any other chat assistant.
 
-4.6 Which engine to choose
+Which engine to choose
 All engines receive the same instructions and the same GX-100 reference data, and the page validates every reply the same way (unknown labels or out-of-range values are sent back to the model for correction, up to three attempts). Quality nevertheless depends on the model: the request asks for a strict JSON document with hundreds of exact effect and parameter names, and small or free-tier models make more mistakes, so the correction loop runs more often and may fail. For the best results use a current top-tier model with web search enabled; for quick experiments any engine will do.
 Security notes. Treat every key like a password: anyone with the key can spend your credit. Do not share a browser profile where the keys are stored; you can revoke a key at any time from the provider console. When you open the HTML file from disk (file://), Chrome shares the stored keys with every other local HTML file opened in the same profile.
 
