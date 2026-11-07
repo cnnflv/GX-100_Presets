@@ -44,6 +44,16 @@
   .badge { display:inline-block; font-size:11px; padding:2px 7px; border-radius:10px; background:#2a2e36; color:var(--muted); margin-left:6px; }
   .inline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .inline input[type=text] { width:110px; }
+  .memdisp { margin-top:12px; display:flex; align-items:baseline; gap:16px; font-family:ui-monospace, Menlo, Consolas, monospace; }
+  .memdisp #memSlot { font-size:34px; font-weight:700; color:var(--acc); letter-spacing:1px; }
+  .memdisp #memName { font-size:18px; color:var(--text); }
+  .memnum { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:18px; font-weight:700; min-width:44px; text-align:center; display:inline-block; }
+  button.sub.on { background:var(--acc); color:#111; }
+  .banktab { border-collapse:collapse; margin-top:12px; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:14px; }
+  .banktab th { text-align:left; color:var(--muted); font-weight:600; padding:4px 14px 6px 0; border-bottom:1px solid var(--line); }
+  .banktab td { padding:6px 14px 6px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .banktab tr.on td { color:var(--acc); font-weight:700; }
+  .banktab tr:hover td { background:#262a32; }
   footer { text-align:center; font-size:12px; color:var(--muted); padding:0 24px 30px; }
 </style>
 </head>
@@ -129,9 +139,14 @@
   <h2 data-i18n="s3"></h2>
   <div class="inline">
     <button id="btnSendTemp" class="blue" type="button" disabled data-i18n="btnSendTemp"></button>
+    <span data-i18n="scratchLabel"></span><input id="scratch" type="text" value="U50-4" placeholder="U50-4">
+    <button id="btnRestore" class="secondary" type="button" disabled data-i18n="btnRestore"></button>
+  </div>
+  <div class="inline" style="margin-top:10px">
     <button id="btnSendSave" class="blue" type="button" disabled data-i18n="btnSendSave"></button>
-    <input id="slot" type="text" value="U50-4" placeholder="U05-2">
+    <input id="slot" type="text" value="U01-1" placeholder="U05-2">
     <label style="display:inline; margin:0"><input id="verify" type="checkbox" checked> <span data-i18n="verify"></span></label>
+    <label style="display:inline; margin:0"><input id="selectAfter" type="checkbox" checked> <span data-i18n="selectAfter"></span></label>
     <button id="btnBackup" class="secondary" type="button" data-i18n="btnBackup"></button>
   </div>
   <div class="hint" data-i18n="midiHint"></div>
@@ -141,6 +156,38 @@
 <section>
   <h2 data-i18n="s4"></h2>
   <div class="hint" data-i18n="importHint"></div>
+</section>
+
+<section id="secMem">
+  <h2 data-i18n="s5"></h2>
+  <div class="inline">
+    <button id="btnConnect" class="blue" type="button" data-i18n="btnConnect"></button>
+    <button id="btnDisconnect" class="secondary" type="button" disabled data-i18n="btnDisconnect"></button>
+    <label style="display:inline; margin:0"><input id="follow" type="checkbox" checked> <span data-i18n="follow"></span></label>
+    <span id="memState" class="hint" data-i18n="notConnected"></span>
+  </div>
+  <div class="memdisp"><span id="memSlot">U--·-</span><span id="memName"></span></div>
+  <div class="inline" style="margin-top:10px">
+    <span data-i18n="bankLabel"></span>
+    <button id="bankMinus" class="secondary" type="button" disabled>−</button>
+    <span id="bankDisp" class="memnum">U01</span>
+    <button id="bankPlus" class="secondary" type="button" disabled>+</button>
+    <span style="width:14px"></span>
+    <span data-i18n="subLabel"></span>
+    <button class="secondary sub" data-sub="1" type="button" disabled>1</button>
+    <button class="secondary sub" data-sub="2" type="button" disabled>2</button>
+    <button class="secondary sub" data-sub="3" type="button" disabled>3</button>
+    <button class="secondary sub" data-sub="4" type="button" disabled>4</button>
+    <span style="width:14px"></span>
+    <button id="memPrev" class="secondary" type="button" disabled data-i18n="memPrev"></button>
+    <button id="memNext" class="secondary" type="button" disabled data-i18n="memNext"></button>
+  </div>
+  <table class="banktab" id="bankTable">
+    <thead><tr><th data-i18n="colBank"></th><th data-i18n="colNr"></th><th data-i18n="colName"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="hint" data-i18n="memHint"></div>
+  <div id="memLog" class="log"></div>
 </section>
 </main>
 <footer>GX-100 Preset Studio · © Flavio Canonico · freeware · BOSS, GX-100 and BOSS TONE STUDIO are trademarks of Roland Corporation (not affiliated)</footer>
@@ -196,7 +243,7 @@ const GUITAR_PROFILES = {
 const SYSTEM_PROMPT = "Sei un sound designer esperto della pedaliera BOSS GX-100. Devi progettare un preset che riproduca il suono di chitarra richiesto dall'utente (un brano preciso, un album, lo stile di un artista o un suono descritto a parole) e restituirlo come **spec JSON** che un generatore trasformerà in un file .tsl per BOSS TONE STUDIO. Scrivi `notes`, `description` e tutti i `why` nella lingua indicata dall'utente nel campo LINGUA / LANGUAGE (default: inglese). I nomi di effetti, parametri, etichette e template restano in inglese esattamente come nei dati tecnici.\n\n## Metodo\n\n1. **Ricerca** (se hai lo strumento di ricerca web e la richiesta riguarda un brano/artista): chitarra e pickup usati nella registrazione o nella versione indicata, amplificatori, pedali, catena del segnale, aneddoti di registrazione, tempo (BPM). Annota le fonti e le discordanze tra fonti. Per un suono descritto a parole non serve ricerca.\n2. **Mappa** l'attrezzatura originale sui modelli della GX-100 (tabella ampli e tabella pedali sotto). Non inventare attrezzatura: se le fonti divergono, scegli la versione più documentata e dichiaralo nelle note.\n3. **Scegli il template** di fabbrica con la catena più vicina. La catena NON si può riordinare: puoi solo cambiare il tipo di un blocco con `replace` (il nuovo blocco parte dai valori iniziali) e spegnere i blocchi inutili con `\"OFF/ON\": \"OFF\"`. Per scambiare due blocchi: `{\"A\": \"B\", \"B\": \"A\"}`.\n4. **Imposta i parametri** di ogni blocco usato (nomi esatti, valori numerici nel range o etichette esatte dalla lista). Cassa e microfono: SP TYPE, MIC TYPE, MIC DISTANCE, MIC POSITION.\n5. **Compensazione chitarra:** indica in `reference_guitar` la chitarra del brano originale (modello/pickup/posizione tra quelli ammessi). La chitarra dell'utente viene aggiunta dalla pagina: NON inserire `guitar`. Il generatore corregge gain ed EQ automaticamente. Per un suono descritto a parole ometti `reference_guitar`.\n6. **Doppia catena** (solo se richiesta o chiaramente utile, es. due ampli in parallelo): template `SUPER CLEAN/DS`, DIVIDER MODE `DUAL` (mix di due ampli) oppure `SINGLE` (commutazione A/B col footswitch). Con due ampli aggiungi `\"compensation_eq\": \"PARAMETRIC EQUALIZER\"` così la correzione chitarra va dopo il MIXER.\n\n## Regole sul formato\n\n- Il nome della patch (`name`) ha al massimo 16 caratteri ASCII maiuscoli.\n- `template` deve essere uno dei template elencati sotto. Le chiavi di `blocks` sono i nomi dei tipi di effetto presenti nella catena del template (dopo i `replace`); `\"EFFETTO#2\"` indica il secondo blocco dello stesso tipo.\n- Ogni blocco impostato deve avere la sua riga in `why` (stessa chiave), più `why.MASTER`: spiega il legame con l'originale e dichiara le ipotesi non verificate. È il testo della tabella \"Motivo della scelta\".\n- `bpm` (40–250) e `level` (MEMORY LEVEL 0–200, di solito 100) opzionali.\n- Liste a indice: SP TYPE: OFF=0, ORIGINAL=1, 1×8\"=2, 1×10\"=3, 1×12\"=4, 2×12\"=5, 4×10\"=6, 4×12\"=7, 8×12\"=8. LOW CUT del PARAMETRIC EQ: FLAT=0, 20Hz=1, 25=2, 31.5=3, 40=4, 50=5, 63=6, 80=7, 100=8, 125=9, 160=10, 200=11, 250=12. REVERB PLUS TYPE: HALL S=0, HALL M=1, PLATE=2, ROOM S=3, ROOM L=4. Dove è indicato \"usa il numero\", scrivi il numero.\n- DIVIDER e MIXER non hanno OFF/ON. DIVIDER: MODE SINGLE suona un solo canale (CH SELECT A/B); MODE DUAL suona entrambi; A/B: DYNAMIC (POLARITY + = solo note forti, − = solo note deboli) e A/B: FILTER valgono solo in DUAL. MIXER A/B BALANCE: 0 = solo A, 50 = 100:100, 100 = solo B; 35 = A 100 / B 70.\n- Le assegnazioni dei footswitch restano quelle del template (SUPER CLEAN/DS ha un footswitch che alterna CH SELECT del DIVIDER): avvisa nelle note se rilevante.\n\n## Modelli di ampli GX-100\n\n| GX-100 | Riferimento |\n|---|---|\n| JC-120 | Roland JC-120 |\n| TWIN COMBO | Fender Twin Reverb |\n| DELUXE COMBO | Fender Deluxe Reverb |\n| TWEED COMBO | Fender Bassman 4×10 |\n| DIAMOND AMP | VOX AC30 |\n| BRIT STACK | Marshall 1959 Plexi |\n| X-CRUNCH | crunch britannico tipo JCM800 (MDP) |\n| X-MODDED | Marshall modificato / Friedman HBE (MDP) |\n| MAXIMUM | Marshall vintage con più gain (hot-rod) |\n| RECTI STACK | Mesa/Boogie Dual Rectifier, canale 2 Modern |\n| BG COMBO | Mesa/Boogie combo serie Mark (Mark I / IIC+) |\n| MATCH COMBO | Matchless DC-30 |\n| ORNG STACK | Orange Rockerverb, canale dirty |\n| BGNR UB METAL | Bogner Uberschall |\n| BOUTIQUE | crunch sensibile al tocco (stile Dumble / Two-Rock) |\n| SUPREME | crunch con carattere 4×12 (stile Marshall JMP / Bogner) |\n| JUGGERNAUT | stack metal (stile Peavey 5150) |\n| X-HI GAIN | high gain tipo Soldano SLO / 6505 (MDP) |\n| X-ULTRA | stack britannico modificato multi-stadio, tipo Friedman BE / Mesa Mark IV |\n| X-OPTIMA | high gain bilanciato, tipo Diezel VH4 / Mark IIC+ |\n| X-TITAN | high gain stretto per metal moderno (ENGL, 5150 III) |\n| NATURAL / TRANSPARENT | pulito BOSS neutro / acustico piatto |\n\n## Pedali di drive GX-100\n\nBOOSTER: MID BOOST, CLEAN BOOST, TREBLE BOOST (Rangemaster). OVERDRIVE: NATURAL OD, WARM OD, BLUES OD (BOSS BD-2), OD-1 (BOSS OD-1), SD-1 (BOSS SD-1), CRUNCH, T-SCREAM (Ibanez TS-808), TURBO OD (BOSS OD-2), CENTA OD (Klon Centaur). DISTORTION: DIST, DS-1 (BOSS DS-1), A-DIST, FAT DS, LEAD DS, RAT (ProCo RAT), GUV DS (Marshall Guv'nor), DIST+ (MXR Distortion+). METAL DISTORTION: METAL DS, METAL ZONE (MT-2), HM-2, METAL CORE (ML-2). FUZZ: OCT FUZZ (Octavia), '60S FUZZ (Fuzz Face), MUFF FUZZ (Big Muff). X OVERDRIVE / X DISTORTION: drive MDP.\n\n## Template di fabbrica consigliati\n\n| Template | Uso |\n|---|---|\n| LEAD DRIVE | lead/ritmica semplice (WAH > AMP > GEQ > NS > FV > CHO > FLG > DLY > REV) |\n| SLOW DANCE | drive con pedali prima dell'ampli (WAH > PITCH > BOOST > OD > OD > AMP > NS > GEQ > FV > REV+ > DLY) |\n| HI-GAIN LEAD | high gain a catena singola (PITCH → GRAPHIC EQUALIZER con replace) |\n| SUPER CLEAN/DS | due catene / due ampli (DIVIDER / MIXER) |\n| ROTARY+ECHO | pulito con modulazioni ed eco a nastro |\n| JC CLEAN | pulito |\n\n## Formato della risposta\n\nRispondi SOLO con un blocco ```json contenente un oggetto con queste chiavi (JSON valido, senza commenti: i commenti qui sotto sono solo esplicativi):\n\n```json\n{\n  \"suggested_name\": \"NomeFile\",            // nome file suggerito, senza estensione, max 30 caratteri, senza spazi\n  \"notes\": \"testo markdown\",                // 1) suono originale e attrezzatura; 2) scelte principali; 3) ipotesi e discordanze tra fonti; 4) 1-2 parametri da ritoccare a orecchio; 5) Fonti (link)\n  \"spec\": {\n    \"liveset\": \"NOME LIVESET\",\n    \"description\": \"brano, versione, attrezzatura originale in 2-3 righe\",\n    \"reference_guitar\": { \"model\": \"les_paul\", \"pickup\": \"humbucker\", \"position\": \"bridge\" },\n    \"compensation_eq\": \"PARAMETRIC EQUALIZER\",   // opzionale\n    \"patches\": [{\n      \"name\": \"MAX 16 CHAR\",\n      \"template\": \"LEAD DRIVE\",\n      \"bpm\": 120, \"level\": 100,\n      \"replace\": { \"FLANGER\": \"OVERDRIVE\" },\n      \"blocks\": {\n        \"OVERDRIVE\": { \"OFF/ON\": \"ON\", \"TYPE\": \"T-SCREAM\", \"DRIVE\": 20, \"LEVEL\": 70 },\n        \"AIRD PREAMP\": { \"OFF/ON\": \"ON\", \"TYPE\": \"BRIT STACK\", \"GAIN\": 60, \"SP TYPE\": 7, \"MIC TYPE\": \"DYN57\" }\n      },\n      \"why\": { \"MASTER\": \"...\", \"OVERDRIVE\": \"...\", \"AIRD PREAMP\": \"...\" }\n    }]\n  }\n}\n```\n\nValori ammessi per `reference_guitar`: model ∈ {stratocaster, telecaster, jazzmaster, superstrat, les_paul, prs, sg, es335, archtop, jackson_king_v} (oppure `body` ∈ {solid_bolt_on, solid_set_neck, solid_thin, semi_hollow, hollow}); pickup ∈ {single_coil, hot_single_coil, p90, mini_humbucker, humbucker, humbucker_hot, humbucker_hot_bright, humbucker_active}; position ∈ {bridge, middle, neck, bridge+middle, neck+middle, neck+bridge}.\n\nSe ricevi un messaggio di errore del generatore, correggi lo spec e restituisci di nuovo il JSON completo.\n\n## Dati tecnici della GX-100 (tipi, parametri, etichette, template)\n\n";
 /* Traduzioni dell'interfaccia. Chiave = id stringa. */
 const I18N = {
-en: { engineLabel:'Engine', pasteName:'Copy/paste (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'No API key: the page prepares the text, you paste it into any AI chat and paste the reply back.', apiSettingsP:'API settings for {0} (key, model, web search)', apiKeyP:'{0} API key (stored only in this browser)', apiHintP:'{0}: create a key at {1}. Calls go directly from the browser to the provider; a preset costs a few cents (more with web search). If web search is not available, the page retries without it.', corsHint:'The browser blocked the direct call to {0} (CORS or network). Use the copy/paste engine or another provider.', _name:'English', _lang:'English',
+en: { colBank:'Bank', colNr:'Nr', colName:'Preset name', s5:'4 · Memory on the pedal', btnConnect:'Connect to the GX-100', btnDisconnect:'Disconnect', follow:'follow the pedal', notConnected:'not connected', connected:'connected — the display follows the pedal', bankLabel:'Bank', subLabel:'Number', memPrev:'◀ previous', memNext:'next ▶', memHint:'Selects the memory on the pedal (bank U01–U50, number 1–4). With "follow the pedal" on, the display updates when you change memory on the GX-100 (checked once a second). Keep this connected while using "Try" and "Save": they share the same connection.', btnSendTemp:'Try (write to test memory and select it)', scratchLabel:'test memory', btnRestore:'Restore test memory', selectAfter:'select it on the pedal', backingUp:'Reading memory {0} for backup…', tryDone:'Done: the pedal is now on {0} with the new patch. "Restore test memory" puts the previous content back.', restored:'Memory {0} restored ("{1}").', engineLabel:'Engine', pasteName:'Copy/paste (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'No API key: the page prepares the text, you paste it into any AI chat and paste the reply back.', apiSettingsP:'API settings for {0} (key, model, web search)', apiKeyP:'{0} API key (stored only in this browser)', apiHintP:'{0}: create a key at {1}. Calls go directly from the browser to the provider; a preset costs a few cents (more with web search). If web search is not available, the page retries without it.', corsHint:'The browser blocked the direct call to {0} (CORS or network). Use the copy/paste engine or another provider.', _name:'English', _lang:'English',
   sub:'Create BOSS GX-100 presets from a song, artist or description · save .tsl · send via USB',
   s1:'1 · Request',
   reqLabel:'Preset to create (song, album, artist style or sound description — also state the part and version: rhythm/solo, studio/live)',
@@ -215,8 +262,8 @@ en: { engineLabel:'Engine', pasteName:'Copy/paste (ChatGPT, Gemini, Copilot, Met
   pName:'Preset / file name (suggested)', pPatch:'Patch name on the pedal (max 16)',
   btnSaveTsl:'Save preset .tsl', btnSaveMd:'Save notes .md', btnSaveSpec:'Save spec .json',
   specSummary:'JSON spec and decoded chain (editable: after changes press "Rebuild from spec")', btnRebuild:'Rebuild from spec',
-  s3:'3 · Send to the GX-100 via USB', btnSendTemp:'Try (current patch, not saved)', btnSendSave:'Save to memory', verify:'verify after sending', btnBackup:'Backup memory → .tsl',
-  midiHint:'Requires Chrome, Edge or Opera (Web MIDI). Connect the GX-100 via USB and close BOSS TONE STUDIO. The browser asks for SysEx permission on first use. Tip: back up the memory and use "Try" before "Save".',
+  s3:'3 · Send to the GX-100 via USB', btnSendSave:'Save to memory', verify:'verify after sending', btnBackup:'Backup memory → .tsl',
+  midiHint:'Requires Chrome, Edge or Opera (Web MIDI). Connect the GX-100 via USB and close BOSS TONE STUDIO. The browser asks for SysEx permission on first use. "Try" uses a test memory (backed up automatically the first time); "Save" overwrites the memory you choose.',
   s4:'Manual import', importHint:'Instead of USB: save the .tsl file and import it in BOSS TONE STUDIO via LIBRARIAN → IMPORT → FILE.',
   errReq:'First write what you want to create (song, artist or sound description).',
   errKey:'API key missing: paste it in the field below (create one at console.anthropic.com) and press "Create preset" again. Alternatively use the copy/paste engine.',
@@ -228,7 +275,7 @@ en: { engineLabel:'Engine', pasteName:'Copy/paste (ChatGPT, Gemini, Copilot, Met
   chainAutoMsg:'your choice (single unless two amps are clearly useful)', chainSingleMsg:'SINGLE (one amp only)', chainDualMsg:'DUAL (SUPER CLEAN/DS with DIVIDER/MIXER)',
   pos:{bridge:'Bridge',middle:'Middle',neck:'Neck','bridge+middle':'Bridge + middle','neck+middle':'Neck + middle','neck+bridge':'Neck + bridge'},
   pick:{single_coil:'Single coil',hot_single_coil:'Hot / noiseless single coil',p90:'P-90',mini_humbucker:'Mini humbucker',humbucker:'Passive humbucker',humbucker_hot:'High-output humbucker (passive)',humbucker_hot_bright:'High-output bright humbucker (e.g. Seymour Duncan JB)',humbucker_active:'Active humbucker (EMG etc.)'} },
-it: { engineLabel:'Motore', pasteName:'Copia/incolla (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Senza chiave API: la pagina prepara il testo, lo incolli in una chat AI qualsiasi e incolli qui la risposta.', apiSettingsP:'Impostazioni API per {0} (chiave, modello, ricerca web)', apiKeyP:'Chiave API {0} (salvata solo in questo browser)', apiHintP:'{0}: la chiave si crea su {1}. Le chiamate partono direttamente dal browser verso il fornitore; un preset costa pochi centesimi (di più con la ricerca web). Se la ricerca web non è disponibile la pagina riprova senza.', corsHint:'Il browser ha bloccato la chiamata diretta a {0} (CORS o rete). Usa il motore copia/incolla o un altro fornitore.', _name:'Italiano', _lang:'italiano',
+it: { colBank:'Banco', colNr:'Nr', colName:'Nome preset', s5:'4 · Memoria sul pedale', btnConnect:'Connetti al GX-100', btnDisconnect:'Disconnetti', follow:'segui il pedale', notConnected:'non connesso', connected:'connesso — il display segue il pedale', bankLabel:'Banco', subLabel:'Numero', memPrev:'◀ precedente', memNext:'successiva ▶', memHint:'Seleziona la memoria sul pedale (banco U01–U50, numero 1–4). Con "segui il pedale" attivo il display si aggiorna quando cambi memoria sul GX-100 (controllo ogni secondo). Puoi restare connesso mentre usi "Prova" e "Salva": condividono la stessa connessione.', btnSendTemp:'Prova (scrive nella memoria di prova e la seleziona)', scratchLabel:'memoria di prova', btnRestore:'Ripristina memoria di prova', selectAfter:'selezionala sul pedale', backingUp:'Leggo la memoria {0} per il backup…', tryDone:'Fatto: il pedale è ora su {0} con la nuova patch. "Ripristina memoria di prova" rimette il contenuto precedente.', restored:'Memoria {0} ripristinata ("{1}").', engineLabel:'Motore', pasteName:'Copia/incolla (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Senza chiave API: la pagina prepara il testo, lo incolli in una chat AI qualsiasi e incolli qui la risposta.', apiSettingsP:'Impostazioni API per {0} (chiave, modello, ricerca web)', apiKeyP:'Chiave API {0} (salvata solo in questo browser)', apiHintP:'{0}: la chiave si crea su {1}. Le chiamate partono direttamente dal browser verso il fornitore; un preset costa pochi centesimi (di più con la ricerca web). Se la ricerca web non è disponibile la pagina riprova senza.', corsHint:'Il browser ha bloccato la chiamata diretta a {0} (CORS o rete). Usa il motore copia/incolla o un altro fornitore.', _name:'Italiano', _lang:'italiano',
   sub:'Crea preset per BOSS GX-100 da brano, artista o descrizione · salva .tsl · invia via USB',
   s1:'1 · Richiesta',
   reqLabel:'Preset da creare (canzone, album, stile di un artista o descrizione del suono — indica anche parte e versione: ritmica/assolo, studio/live)',
@@ -247,8 +294,8 @@ it: { engineLabel:'Motore', pasteName:'Copia/incolla (ChatGPT, Gemini, Copilot, 
   pName:'Nome del preset / file (suggerito)', pPatch:'Nome patch sul pedale (max 16)',
   btnSaveTsl:'Salva preset .tsl', btnSaveMd:'Salva note .md', btnSaveSpec:'Salva spec .json',
   specSummary:'Spec JSON e catena decodificata (modificabile: dopo le modifiche premi "Rigenera dallo spec")', btnRebuild:'Rigenera dallo spec',
-  s3:'3 · Invio al GX-100 via USB', btnSendTemp:'Prova (patch corrente, non salva)', btnSendSave:'Salva nella memoria', verify:"verifica dopo l'invio", btnBackup:'Backup memoria → .tsl',
-  midiHint:'Serve Chrome, Edge o Opera (Web MIDI). Collega il GX-100 via USB e chiudi BOSS TONE STUDIO. Il browser chiede il permesso SysEx al primo uso. Consiglio: fai il backup della memoria e usa "Prova" prima di "Salva".',
+  s3:'3 · Invio al GX-100 via USB', btnSendSave:'Salva nella memoria', verify:"verifica dopo l'invio", btnBackup:'Backup memoria → .tsl',
+  midiHint:'Serve Chrome, Edge o Opera (Web MIDI). Collega il GX-100 via USB e chiudi BOSS TONE STUDIO. Il browser chiede il permesso SysEx al primo uso. "Prova" usa una memoria di prova (salvata automaticamente la prima volta); "Salva" sovrascrive la memoria che indichi.',
   s4:'Importazione manuale', importHint:'In alternativa all\'USB: salva il file .tsl e importalo in BOSS TONE STUDIO con LIBRARIAN → IMPORT → FILE.',
   errReq:'Scrivi prima cosa vuoi creare (brano, artista o descrizione del suono).',
   errKey:'Manca la chiave API: incollala nel campo qui sotto (si crea su console.anthropic.com) e premi di nuovo "Crea preset". In alternativa usa il motore copia/incolla.',
@@ -260,7 +307,7 @@ it: { engineLabel:'Motore', pasteName:'Copia/incolla (ChatGPT, Gemini, Copilot, 
   chainAutoMsg:'a tua scelta (singola salvo chiara utilità di due ampli)', chainSingleMsg:'SINGOLA (un solo ampli)', chainDualMsg:'DOPPIA (SUPER CLEAN/DS con DIVIDER/MIXER)',
   pos:{bridge:'Ponte',middle:'Centrale',neck:'Manico','bridge+middle':'Ponte + centrale','neck+middle':'Manico + centrale','neck+bridge':'Manico + ponte'},
   pick:{single_coil:'Single coil',hot_single_coil:'Single coil hot / noiseless',p90:'P-90',mini_humbucker:'Mini humbucker',humbucker:'Humbucker passivo',humbucker_hot:'Humbucker high output (passivo)',humbucker_hot_bright:'Humbucker high output brillante (es. Seymour Duncan JB)',humbucker_active:'Humbucker attivo (EMG ecc.)'} },
-fr: { engineLabel:'Moteur', pasteName:'Copier/coller (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Sans clé API : la page prépare le texte, vous le collez dans n\'importe quel chat IA et collez la réponse ici.', apiSettingsP:'Paramètres API pour {0} (clé, modèle, recherche web)', apiKeyP:'Clé API {0} (stockée uniquement dans ce navigateur)', apiHintP:'{0} : créez une clé sur {1}. Les appels partent directement du navigateur vers le fournisseur ; un preset coûte quelques centimes (plus avec la recherche web). Si la recherche web n\'est pas disponible, la page réessaie sans.', corsHint:'Le navigateur a bloqué l\'appel direct à {0} (CORS ou réseau). Utilisez le moteur copier/coller ou un autre fournisseur.', _name:'Français', _lang:'français',
+fr: { colBank:'Banque', colNr:'N°', colName:'Nom du preset', s5:'4 · Mémoire sur la pédale', btnConnect:'Connecter le GX-100', btnDisconnect:'Déconnecter', follow:'suivre la pédale', notConnected:'non connecté', connected:'connecté — l\'affichage suit la pédale', bankLabel:'Banque', subLabel:'Numéro', memPrev:'◀ précédente', memNext:'suivante ▶', memHint:'Sélectionne la mémoire sur la pédale (banque U01–U50, numéro 1–4). Avec « suivre la pédale », l\'affichage se met à jour quand vous changez de mémoire sur le GX-100 (vérification chaque seconde). Vous pouvez rester connecté pendant « Essayer » et « Enregistrer ».', btnSendTemp:'Essayer (écrit dans la mémoire de test et la sélectionne)', scratchLabel:'mémoire de test', btnRestore:'Restaurer la mémoire de test', selectAfter:'la sélectionner sur la pédale', backingUp:'Lecture de la mémoire {0} pour la sauvegarde…', tryDone:'Terminé : la pédale est maintenant sur {0} avec le nouveau patch. « Restaurer la mémoire de test » remet le contenu précédent.', restored:'Mémoire {0} restaurée (« {1} »).', engineLabel:'Moteur', pasteName:'Copier/coller (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Sans clé API : la page prépare le texte, vous le collez dans n\'importe quel chat IA et collez la réponse ici.', apiSettingsP:'Paramètres API pour {0} (clé, modèle, recherche web)', apiKeyP:'Clé API {0} (stockée uniquement dans ce navigateur)', apiHintP:'{0} : créez une clé sur {1}. Les appels partent directement du navigateur vers le fournisseur ; un preset coûte quelques centimes (plus avec la recherche web). Si la recherche web n\'est pas disponible, la page réessaie sans.', corsHint:'Le navigateur a bloqué l\'appel direct à {0} (CORS ou réseau). Utilisez le moteur copier/coller ou un autre fournisseur.', _name:'Français', _lang:'français',
   sub:'Créez des presets BOSS GX-100 à partir d\'un morceau, d\'un artiste ou d\'une description · enregistrez en .tsl · envoyez par USB',
   s1:'1 · Demande',
   reqLabel:'Preset à créer (morceau, album, style d\'un artiste ou description du son — précisez aussi la partie et la version : rythmique/solo, studio/live)',
@@ -279,7 +326,7 @@ fr: { engineLabel:'Moteur', pasteName:'Copier/coller (ChatGPT, Gemini, Copilot, 
   pName:'Nom du preset / fichier (suggéré)', pPatch:'Nom du patch sur la pédale (16 max)',
   btnSaveTsl:'Enregistrer le preset .tsl', btnSaveMd:'Enregistrer les notes .md', btnSaveSpec:'Enregistrer la spec .json',
   specSummary:'Spec JSON et chaîne décodée (modifiable : après modification, cliquez sur « Régénérer depuis la spec »)', btnRebuild:'Régénérer depuis la spec',
-  s3:'3 · Envoi au GX-100 par USB', btnSendTemp:'Essayer (patch courant, non sauvegardé)', btnSendSave:'Enregistrer en mémoire', verify:'vérifier après l\'envoi', btnBackup:'Sauvegarde mémoire → .tsl',
+  s3:'3 · Envoi au GX-100 par USB', btnSendSave:'Enregistrer en mémoire', verify:'vérifier après l\'envoi', btnBackup:'Sauvegarde mémoire → .tsl',
   midiHint:'Nécessite Chrome, Edge ou Opera (Web MIDI). Connectez le GX-100 en USB et fermez BOSS TONE STUDIO. Le navigateur demande l\'autorisation SysEx à la première utilisation. Conseil : sauvegardez la mémoire et utilisez « Essayer » avant « Enregistrer ».',
   s4:'Import manuel', importHint:'Au lieu de l\'USB : enregistrez le fichier .tsl et importez-le dans BOSS TONE STUDIO via LIBRARIAN → IMPORT → FILE.',
   errReq:'Écrivez d\'abord ce que vous voulez créer (morceau, artiste ou description du son).',
@@ -292,7 +339,7 @@ fr: { engineLabel:'Moteur', pasteName:'Copier/coller (ChatGPT, Gemini, Copilot, 
   chainAutoMsg:'à ton choix (simple sauf si deux amplis sont clairement utiles)', chainSingleMsg:'SIMPLE (un seul ampli)', chainDualMsg:'DOUBLE (SUPER CLEAN/DS avec DIVIDER/MIXER)',
   pos:{bridge:'Chevalet',middle:'Central',neck:'Manche','bridge+middle':'Chevalet + central','neck+middle':'Manche + central','neck+bridge':'Manche + chevalet'},
   pick:{single_coil:'Simple bobinage',hot_single_coil:'Simple bobinage hot / noiseless',p90:'P-90',mini_humbucker:'Mini humbucker',humbucker:'Humbucker passif',humbucker_hot:'Humbucker haut niveau (passif)',humbucker_hot_bright:'Humbucker haut niveau brillant (ex. Seymour Duncan JB)',humbucker_active:'Humbucker actif (EMG, etc.)'} },
-de: { engineLabel:'Engine', pasteName:'Kopieren/Einfügen (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Ohne API-Schlüssel: Die Seite bereitet den Text vor, du fügst ihn in einen beliebigen KI-Chat ein und fügst die Antwort hier ein.', apiSettingsP:'API-Einstellungen für {0} (Schlüssel, Modell, Websuche)', apiKeyP:'{0} API-Schlüssel (nur in diesem Browser gespeichert)', apiHintP:'{0}: Schlüssel auf {1} erstellen. Die Anfragen gehen direkt vom Browser an den Anbieter; ein Preset kostet wenige Cent (mehr mit Websuche). Ist die Websuche nicht verfügbar, versucht es die Seite ohne.', corsHint:'Der Browser hat den direkten Aufruf von {0} blockiert (CORS oder Netzwerk). Nutze Kopieren/Einfügen oder einen anderen Anbieter.', _name:'Deutsch', _lang:'Deutsch',
+de: { colBank:'Bank', colNr:'Nr', colName:'Preset-Name', s5:'4 · Speicher am Pedal', btnConnect:'Mit GX-100 verbinden', btnDisconnect:'Trennen', follow:'dem Pedal folgen', notConnected:'nicht verbunden', connected:'verbunden — die Anzeige folgt dem Pedal', bankLabel:'Bank', subLabel:'Nummer', memPrev:'◀ vorherige', memNext:'nächste ▶', memHint:'Wählt den Speicher am Pedal (Bank U01–U50, Nummer 1–4). Mit „dem Pedal folgen“ aktualisiert sich die Anzeige, wenn du am GX-100 den Speicher wechselst (Abfrage jede Sekunde). Du kannst während „Testen“ und „Sichern“ verbunden bleiben.', btnSendTemp:'Testen (in Testspeicher schreiben und auswählen)', scratchLabel:'Testspeicher', btnRestore:'Testspeicher wiederherstellen', selectAfter:'am Pedal auswählen', backingUp:'Speicher {0} wird für das Backup gelesen…', tryDone:'Fertig: Das Pedal steht jetzt auf {0} mit dem neuen Patch. „Testspeicher wiederherstellen“ stellt den vorherigen Inhalt wieder her.', restored:'Speicher {0} wiederhergestellt („{1}“).', engineLabel:'Engine', pasteName:'Kopieren/Einfügen (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Ohne API-Schlüssel: Die Seite bereitet den Text vor, du fügst ihn in einen beliebigen KI-Chat ein und fügst die Antwort hier ein.', apiSettingsP:'API-Einstellungen für {0} (Schlüssel, Modell, Websuche)', apiKeyP:'{0} API-Schlüssel (nur in diesem Browser gespeichert)', apiHintP:'{0}: Schlüssel auf {1} erstellen. Die Anfragen gehen direkt vom Browser an den Anbieter; ein Preset kostet wenige Cent (mehr mit Websuche). Ist die Websuche nicht verfügbar, versucht es die Seite ohne.', corsHint:'Der Browser hat den direkten Aufruf von {0} blockiert (CORS oder Netzwerk). Nutze Kopieren/Einfügen oder einen anderen Anbieter.', _name:'Deutsch', _lang:'Deutsch',
   sub:'BOSS GX-100 Presets aus Song, Künstler oder Beschreibung erstellen · als .tsl speichern · per USB senden',
   s1:'1 · Anfrage',
   reqLabel:'Zu erstellendes Preset (Song, Album, Stil eines Künstlers oder Klangbeschreibung — bitte auch Part und Version angeben: Rhythmus/Solo, Studio/Live)',
@@ -311,7 +358,7 @@ de: { engineLabel:'Engine', pasteName:'Kopieren/Einfügen (ChatGPT, Gemini, Copi
   pName:'Preset-/Dateiname (Vorschlag)', pPatch:'Patch-Name auf dem Pedal (max. 16)',
   btnSaveTsl:'Preset .tsl speichern', btnSaveMd:'Notizen .md speichern', btnSaveSpec:'Spec .json speichern',
   specSummary:'JSON-Spec und dekodierte Kette (editierbar: nach Änderungen „Aus Spec neu erzeugen“ drücken)', btnRebuild:'Aus Spec neu erzeugen',
-  s3:'3 · An den GX-100 per USB senden', btnSendTemp:'Testen (aktueller Patch, nicht gespeichert)', btnSendSave:'In Speicher sichern', verify:'nach dem Senden prüfen', btnBackup:'Speicher-Backup → .tsl',
+  s3:'3 · An den GX-100 per USB senden', btnSendSave:'In Speicher sichern', verify:'nach dem Senden prüfen', btnBackup:'Speicher-Backup → .tsl',
   midiHint:'Benötigt Chrome, Edge oder Opera (Web MIDI). GX-100 per USB verbinden und BOSS TONE STUDIO schließen. Der Browser fragt beim ersten Mal nach der SysEx-Berechtigung. Tipp: Speicher sichern und „Testen“ vor „Sichern“ nutzen.',
   s4:'Manueller Import', importHint:'Statt USB: .tsl-Datei speichern und in BOSS TONE STUDIO über LIBRARIAN → IMPORT → FILE importieren.',
   errReq:'Schreibe zuerst, was du erstellen willst (Song, Künstler oder Klangbeschreibung).',
@@ -324,7 +371,7 @@ de: { engineLabel:'Engine', pasteName:'Kopieren/Einfügen (ChatGPT, Gemini, Copi
   chainAutoMsg:'nach deiner Wahl (einfach, außer zwei Amps sind klar sinnvoll)', chainSingleMsg:'EINFACH (nur ein Amp)', chainDualMsg:'DOPPELT (SUPER CLEAN/DS mit DIVIDER/MIXER)',
   pos:{bridge:'Steg',middle:'Mitte',neck:'Hals','bridge+middle':'Steg + Mitte','neck+middle':'Hals + Mitte','neck+bridge':'Hals + Steg'},
   pick:{single_coil:'Single Coil',hot_single_coil:'Single Coil hot / noiseless',p90:'P-90',mini_humbucker:'Mini-Humbucker',humbucker:'Passiver Humbucker',humbucker_hot:'High-Output-Humbucker (passiv)',humbucker_hot_bright:'High-Output-Humbucker, hell (z. B. Seymour Duncan JB)',humbucker_active:'Aktiver Humbucker (EMG usw.)'} },
-es: { engineLabel:'Motor', pasteName:'Copiar/pegar (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Sin clave API: la página prepara el texto, lo pegas en cualquier chat de IA y pegas aquí la respuesta.', apiSettingsP:'Ajustes de la API para {0} (clave, modelo, búsqueda web)', apiKeyP:'Clave API de {0} (guardada solo en este navegador)', apiHintP:'{0}: la clave se crea en {1}. Las llamadas salen directamente del navegador al proveedor; un preset cuesta unos céntimos (más con búsqueda web). Si la búsqueda web no está disponible, la página reintenta sin ella.', corsHint:'El navegador bloqueó la llamada directa a {0} (CORS o red). Usa el motor copiar/pegar u otro proveedor.', _name:'Español', _lang:'español',
+es: { colBank:'Banco', colNr:'N.º', colName:'Nombre del preset', s5:'4 · Memoria en el pedal', btnConnect:'Conectar con el GX-100', btnDisconnect:'Desconectar', follow:'seguir el pedal', notConnected:'no conectado', connected:'conectado — la pantalla sigue el pedal', bankLabel:'Banco', subLabel:'Número', memPrev:'◀ anterior', memNext:'siguiente ▶', memHint:'Selecciona la memoria en el pedal (banco U01–U50, número 1–4). Con «seguir el pedal» activo, la pantalla se actualiza al cambiar de memoria en el GX-100 (comprobación cada segundo). Puedes seguir conectado mientras usas «Probar» y «Guardar».', btnSendTemp:'Probar (escribe en la memoria de prueba y la selecciona)', scratchLabel:'memoria de prueba', btnRestore:'Restaurar memoria de prueba', selectAfter:'seleccionarla en el pedal', backingUp:'Leyendo la memoria {0} para la copia…', tryDone:'Hecho: el pedal está ahora en {0} con el nuevo patch. «Restaurar memoria de prueba» devuelve el contenido anterior.', restored:'Memoria {0} restaurada («{1}»).', engineLabel:'Motor', pasteName:'Copiar/pegar (ChatGPT, Gemini, Copilot, Meta AI, Claude…)', pasteHint:'Sin clave API: la página prepara el texto, lo pegas en cualquier chat de IA y pegas aquí la respuesta.', apiSettingsP:'Ajustes de la API para {0} (clave, modelo, búsqueda web)', apiKeyP:'Clave API de {0} (guardada solo en este navegador)', apiHintP:'{0}: la clave se crea en {1}. Las llamadas salen directamente del navegador al proveedor; un preset cuesta unos céntimos (más con búsqueda web). Si la búsqueda web no está disponible, la página reintenta sin ella.', corsHint:'El navegador bloqueó la llamada directa a {0} (CORS o red). Usa el motor copiar/pegar u otro proveedor.', _name:'Español', _lang:'español',
   sub:'Crea presets para BOSS GX-100 a partir de una canción, artista o descripción · guarda .tsl · envía por USB',
   s1:'1 · Solicitud',
   reqLabel:'Preset a crear (canción, álbum, estilo de un artista o descripción del sonido — indica también la parte y la versión: rítmica/solo, estudio/directo)',
@@ -343,7 +390,7 @@ es: { engineLabel:'Motor', pasteName:'Copiar/pegar (ChatGPT, Gemini, Copilot, Me
   pName:'Nombre del preset / archivo (sugerido)', pPatch:'Nombre del patch en el pedal (máx. 16)',
   btnSaveTsl:'Guardar preset .tsl', btnSaveMd:'Guardar notas .md', btnSaveSpec:'Guardar spec .json',
   specSummary:'Spec JSON y cadena decodificada (editable: tras los cambios pulsa «Regenerar desde la spec»)', btnRebuild:'Regenerar desde la spec',
-  s3:'3 · Envío al GX-100 por USB', btnSendTemp:'Probar (patch actual, sin guardar)', btnSendSave:'Guardar en memoria', verify:'verificar tras el envío', btnBackup:'Copia de memoria → .tsl',
+  s3:'3 · Envío al GX-100 por USB', btnSendSave:'Guardar en memoria', verify:'verificar tras el envío', btnBackup:'Copia de memoria → .tsl',
   midiHint:'Requiere Chrome, Edge u Opera (Web MIDI). Conecta el GX-100 por USB y cierra BOSS TONE STUDIO. El navegador pide permiso SysEx la primera vez. Consejo: haz copia de la memoria y usa «Probar» antes de «Guardar».',
   s4:'Importación manual', importHint:'En lugar del USB: guarda el archivo .tsl e impórtalo en BOSS TONE STUDIO con LIBRARIAN → IMPORT → FILE.',
   errReq:'Escribe primero qué quieres crear (canción, artista o descripción del sonido).',
@@ -356,7 +403,7 @@ es: { engineLabel:'Motor', pasteName:'Copiar/pegar (ChatGPT, Gemini, Copilot, Me
   chainAutoMsg:'a tu elección (simple salvo que dos amplis sean claramente útiles)', chainSingleMsg:'SIMPLE (un solo ampli)', chainDualMsg:'DOBLE (SUPER CLEAN/DS con DIVIDER/MIXER)',
   pos:{bridge:'Puente',middle:'Central',neck:'Mástil','bridge+middle':'Puente + central','neck+middle':'Mástil + central','neck+bridge':'Mástil + puente'},
   pick:{single_coil:'Bobina simple',hot_single_coil:'Bobina simple hot / noiseless',p90:'P-90',mini_humbucker:'Mini humbucker',humbucker:'Humbucker pasiva',humbucker_hot:'Humbucker de alta salida (pasiva)',humbucker_hot_bright:'Humbucker de alta salida brillante (p. ej. Seymour Duncan JB)',humbucker_active:'Humbucker activa (EMG, etc.)'} },
-zh: { engineLabel:'引擎', pasteName:'复制/粘贴（ChatGPT、Gemini、Copilot、Meta AI、Claude…）', pasteHint:'无需 API 密钥：页面准备好文本，你粘贴到任意 AI 聊天中，再把回复粘贴回来。', apiSettingsP:'{0} 的 API 设置（密钥、模型、网络搜索）', apiKeyP:'{0} API 密钥（仅保存在本浏览器）', apiHintP:'{0}：请在 {1} 创建密钥。请求由浏览器直接发送给服务商；一个预设花费几美分（启用网络搜索会更多）。若网络搜索不可用，页面会自动改为不使用搜索重试。', corsHint:'浏览器阻止了对 {0} 的直接调用（CORS 或网络）。请使用复制/粘贴引擎或其他服务商。', _name:'简体中文', _lang:'简体中文',
+zh: { colBank:'库', colNr:'编号', colName:'预设名称', s5:'4 · 踏板上的存储位', btnConnect:'连接 GX-100', btnDisconnect:'断开', follow:'跟随踏板', notConnected:'未连接', connected:'已连接 — 显示跟随踏板', bankLabel:'库', subLabel:'编号', memPrev:'◀ 上一个', memNext:'下一个 ▶', memHint:'在踏板上选择存储位（库 U01–U50，编号 1–4）。开启“跟随踏板”后，在 GX-100 上切换存储位时显示会同步更新（每秒检查一次）。使用“试听”和“保存”时可保持连接。', btnSendTemp:'试听（写入测试存储位并选中）', scratchLabel:'测试存储位', btnRestore:'恢复测试存储位', selectAfter:'在踏板上选中', backingUp:'正在读取存储位 {0} 以备份…', tryDone:'完成：踏板现已切换到 {0} 并载入新 patch。“恢复测试存储位”可还原原内容。', restored:'存储位 {0} 已恢复（“{1}”）。', engineLabel:'引擎', pasteName:'复制/粘贴（ChatGPT、Gemini、Copilot、Meta AI、Claude…）', pasteHint:'无需 API 密钥：页面准备好文本，你粘贴到任意 AI 聊天中，再把回复粘贴回来。', apiSettingsP:'{0} 的 API 设置（密钥、模型、网络搜索）', apiKeyP:'{0} API 密钥（仅保存在本浏览器）', apiHintP:'{0}：请在 {1} 创建密钥。请求由浏览器直接发送给服务商；一个预设花费几美分（启用网络搜索会更多）。若网络搜索不可用，页面会自动改为不使用搜索重试。', corsHint:'浏览器阻止了对 {0} 的直接调用（CORS 或网络）。请使用复制/粘贴引擎或其他服务商。', _name:'简体中文', _lang:'简体中文',
   sub:'根据歌曲、艺人或音色描述创建 BOSS GX-100 预设 · 保存为 .tsl · 通过 USB 发送',
   s1:'1 · 需求',
   reqLabel:'要创建的预设（歌曲、专辑、艺人风格或音色描述——请同时说明声部和版本：节奏/独奏，录音室/现场）',
@@ -375,7 +422,7 @@ zh: { engineLabel:'引擎', pasteName:'复制/粘贴（ChatGPT、Gemini、Copilo
   pName:'预设/文件名（建议）', pPatch:'踏板上的 patch 名称（最多 16 字符）',
   btnSaveTsl:'保存预设 .tsl', btnSaveMd:'保存说明 .md', btnSaveSpec:'保存 spec .json',
   specSummary:'JSON spec 与解码后的信号链（可编辑：修改后请点击“从 spec 重新生成”）', btnRebuild:'从 spec 重新生成',
-  s3:'3 · 通过 USB 发送到 GX-100', btnSendTemp:'试听（当前 patch，不保存）', btnSendSave:'保存到存储位', verify:'发送后校验', btnBackup:'备份存储位 → .tsl',
+  s3:'3 · 通过 USB 发送到 GX-100', btnSendSave:'保存到存储位', verify:'发送后校验', btnBackup:'备份存储位 → .tsl',
   midiHint:'需要 Chrome、Edge 或 Opera（Web MIDI）。用 USB 连接 GX-100 并关闭 BOSS TONE STUDIO。首次使用时浏览器会请求 SysEx 权限。建议：先备份存储位，并在“保存”前先“试听”。',
   s4:'手动导入', importHint:'不用 USB 时：保存 .tsl 文件，然后在 BOSS TONE STUDIO 中通过 LIBRARIAN → IMPORT → FILE 导入。',
   errReq:'请先写明要创建的内容（歌曲、艺人或音色描述）。',
@@ -388,7 +435,7 @@ zh: { engineLabel:'引擎', pasteName:'复制/粘贴（ChatGPT、Gemini、Copilo
   chainAutoMsg:'由你决定（除非两个音箱明显有用，否则用单链）', chainSingleMsg:'单链（仅一个音箱）', chainDualMsg:'双链（SUPER CLEAN/DS，带 DIVIDER/MIXER）',
   pos:{bridge:'琴桥',middle:'中间',neck:'琴颈','bridge+middle':'琴桥 + 中间','neck+middle':'琴颈 + 中间','neck+bridge':'琴颈 + 琴桥'},
   pick:{single_coil:'单线圈',hot_single_coil:'高输出/无噪单线圈',p90:'P-90',mini_humbucker:'迷你双线圈',humbucker:'被动双线圈',humbucker_hot:'高输出双线圈（被动）',humbucker_hot_bright:'高输出明亮双线圈（如 Seymour Duncan JB）',humbucker_active:'主动双线圈（EMG 等）'} },
-ja: { engineLabel:'エンジン', pasteName:'コピー＆ペースト（ChatGPT、Gemini、Copilot、Meta AI、Claude…）', pasteHint:'API キー不要：ページがテキストを用意し、任意の AI チャットに貼り付けて、返答をここに貼り付けます。', apiSettingsP:'{0} の API 設定（キー、モデル、ウェブ検索）', apiKeyP:'{0} API キー（このブラウザにのみ保存）', apiHintP:'{0}：キーは {1} で作成します。リクエストはブラウザから直接プロバイダーに送られます。プリセット1件あたり数セント（ウェブ検索ありではやや高め）。ウェブ検索が使えない場合は検索なしで再試行します。', corsHint:'ブラウザが {0} への直接呼び出しをブロックしました（CORS またはネットワーク）。コピー＆ペーストのエンジンか他のプロバイダーを使ってください。', _name:'日本語', _lang:'日本語',
+ja: { colBank:'バンク', colNr:'No.', colName:'プリセット名', s5:'4 · ペダルのメモリー', btnConnect:'GX-100 に接続', btnDisconnect:'切断', follow:'ペダルに追従', notConnected:'未接続', connected:'接続中 — 表示はペダルに追従', bankLabel:'バンク', subLabel:'ナンバー', memPrev:'◀ 前へ', memNext:'次へ ▶', memHint:'ペダルのメモリーを選択します（バンク U01–U50、ナンバー 1–4）。「ペダルに追従」をオンにすると、GX-100 側でメモリーを切り替えたときに表示が更新されます（毎秒確認）。「試す」「保存」の間も接続したままで使えます。', btnSendTemp:'試す（テスト用メモリーに書き込んで選択）', scratchLabel:'テスト用メモリー', btnRestore:'テスト用メモリーを復元', selectAfter:'ペダルで選択する', backingUp:'バックアップのためメモリー {0} を読み込み中…', tryDone:'完了：ペダルは {0} の新しいパッチに切り替わりました。「テスト用メモリーを復元」で元の内容に戻せます。', restored:'メモリー {0} を復元しました（「{1}」）。', engineLabel:'エンジン', pasteName:'コピー＆ペースト（ChatGPT、Gemini、Copilot、Meta AI、Claude…）', pasteHint:'API キー不要：ページがテキストを用意し、任意の AI チャットに貼り付けて、返答をここに貼り付けます。', apiSettingsP:'{0} の API 設定（キー、モデル、ウェブ検索）', apiKeyP:'{0} API キー（このブラウザにのみ保存）', apiHintP:'{0}：キーは {1} で作成します。リクエストはブラウザから直接プロバイダーに送られます。プリセット1件あたり数セント（ウェブ検索ありではやや高め）。ウェブ検索が使えない場合は検索なしで再試行します。', corsHint:'ブラウザが {0} への直接呼び出しをブロックしました（CORS またはネットワーク）。コピー＆ペーストのエンジンか他のプロバイダーを使ってください。', _name:'日本語', _lang:'日本語',
   sub:'曲・アーティスト・音の説明から BOSS GX-100 のプリセットを作成 · .tsl で保存 · USB で送信',
   s1:'1 · リクエスト',
   reqLabel:'作成するプリセット（曲、アルバム、アーティストのスタイル、または音の説明 — パートとバージョンも指定：リズム/ソロ、スタジオ/ライブ）',
@@ -407,7 +454,7 @@ ja: { engineLabel:'エンジン', pasteName:'コピー＆ペースト（ChatGPT�
   pName:'プリセット / ファイル名（提案）', pPatch:'ペダル上のパッチ名（最大16文字）',
   btnSaveTsl:'プリセット .tsl を保存', btnSaveMd:'メモ .md を保存', btnSaveSpec:'spec .json を保存',
   specSummary:'JSON spec とデコードしたチェーン（編集可：変更後に「spec から再生成」を押す）', btnRebuild:'spec から再生成',
-  s3:'3 · USB で GX-100 に送信', btnSendTemp:'試す（現在のパッチ、保存しない）', btnSendSave:'メモリーに保存', verify:'送信後に検証', btnBackup:'メモリーをバックアップ → .tsl',
+  s3:'3 · USB で GX-100 に送信', btnSendSave:'メモリーに保存', verify:'送信後に検証', btnBackup:'メモリーをバックアップ → .tsl',
   midiHint:'Chrome、Edge、Opera（Web MIDI）が必要です。GX-100 を USB で接続し、BOSS TONE STUDIO を終了してください。初回はブラウザが SysEx の許可を求めます。おすすめ：メモリーをバックアップし、「保存」の前に「試す」を使ってください。',
   s4:'手動インポート', importHint:'USB を使わない場合：.tsl ファイルを保存し、BOSS TONE STUDIO の LIBRARIAN → IMPORT → FILE でインポートします。',
   errReq:'まず作りたいもの（曲、アーティスト、音の説明）を書いてください。',
@@ -799,6 +846,7 @@ const GXMIDI = (() => {
     async open(portHint) {
       if (!navigator.requestMIDIAccess) throw new Error('Web MIDI non disponibile: usa Chrome, Edge o Opera (Safari e Firefox non lo supportano).');
       const acc = await navigator.requestMIDIAccess({ sysex: true });
+      this.log('Porte MIDI: out [' + [...acc.outputs.values()].map(p => p.name).join(', ') + '] in [' + [...acc.inputs.values()].map(p => p.name).join(', ') + ']');
       const hint = (portHint || 'GX-100').toLowerCase();
       const pick = m => [...m.values()].find(p => p.name.toLowerCase().includes(hint));
       this.out = pick(acc.outputs); this.inp = pick(acc.inputs);
@@ -807,7 +855,8 @@ const GXMIDI = (() => {
         throw new Error(`GX-100 non trovato. Porte MIDI viste: ${o}. Collega il cavo USB e chiudi BOSS TONE STUDIO.`);
       }
       this.bt = /bluetooth|ble/i.test(this.out.name);
-      this.inp.onmidimessage = e => { const d = Array.from(e.data); if (d[0] === 0xF0) this.queue.push(d); };
+      this.inp.onmidimessage = e => { const d = Array.from(e.data); if (d[0] === 0xF0) this.queue.push(d); else if ((d[0] & 0xF0) === 0xB0) { if (d[1] === 0) this.bankMsb = d[2]; if (this.onControlChange) this.onControlChange(d[1], d[2], (d[0] & 15) + 1); } else if ((d[0] & 0xF0) === 0xC0 && this.onProgramChange) this.onProgramChange((this.bankMsb || 0) * 128 + d[1] + 1); };
+      this.open_ = true;
       this.log(`Porta: ${this.out.name}${this.bt ? ' (Bluetooth)' : ''}`);
     }
     async send(msg) {
@@ -842,15 +891,35 @@ const GXMIDI = (() => {
       if (lvl[0] !== COMM_LEVEL_EXPECTED) this.log(`ATTENZIONE: livello di comunicazione ${lvl[0]} (atteso ${COMM_LEVEL_EXPECTED}): firmware diverso.`);
       await this.send(dt1(this.dev, from7(to7raw(ADDR_EDITOR_MODE)), [1]));
     }
-    async bye() { try { await this.send(dt1(this.dev, from7(to7raw(ADDR_EDITOR_MODE)), [0])); } finally { if (this.inp) this.inp.onmidimessage = null; } }
+    async selectSlot(idx) {   // System Common "Memory Number" (0-299, 4 nibble) via DT1: seleziona la memoria senza dipendere da PROGRAM MAP/canale
+      const n = idx - 1;
+      await this.send(dt1(this.dev, 0, [(n >> 12) & 15, (n >> 8) & 15, (n >> 4) & 15, n & 15]));
+      await sleep(200);
+      const r = await this.read(0, 4);
+      const got = r ? ((r[0] << 12) | (r[1] << 8) | (r[2] << 4) | r[3]) : -1;
+      this.log(got === n ? `Memoria selezionata sul pedale: ${slotName(idx)}` : `Selezione memoria: il pedale riporta ${got >= 0 ? slotName(got + 1) : 'nessuna risposta'} (attesa ${slotName(idx)}); selezionala a mano.`);
+    }
+    async bye() { this.stopPolling(); try { await this.send(dt1(this.dev, from7(to7raw(ADDR_EDITOR_MODE)), [0])); } finally { if (this.inp) this.inp.onmidimessage = null; this.open_ = false; } }
+    sendCC(cc, value, channel = 1) { this.out.send(new Uint8Array([0xB0 | ((channel - 1) & 15), cc & 127, value & 127])); }
+    async getMemory() { const r = await this.read(0, 4); return r ? ((r[0] << 12) | (r[1] << 8) | (r[2] << 4) | r[3]) + 1 : null; }
+    async getMemoryName(idx) { const r = await this.read(USER_BASE_1 + (idx - 1) * USER_STEP, 16); return r ? String.fromCharCode(...r).trimEnd() : ''; }
+    startPolling(ms, cb) { this.stopPolling(); this.pollTimer = setInterval(async () => { if (this.busy || !this.open_) return; this.busy = true; try { const m = await this.getMemory(); if (m) cb(m); } catch (e) {} finally { this.busy = false; } }, ms); }
+    stopPolling() { if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; } }
+    async withLock(fn) { while (this.busy) await sleep(20); this.busy = true; try { return await fn(); } finally { this.busy = false; } }
     async verify(base, blocks) {
       let bad = 0;
+      const hx = v => v.toString(16).toUpperCase().padStart(2, '0');
       for (const [name, off, chunks] of BLOCKS) {
         let pos = 0;
         for (const size of chunks) {
           const got = await this.read(base + off + pos, size);
           const exp = blocks[name].slice(pos, pos + size);
-          if (!got || got.length !== exp.length || got.some((v, i) => v !== exp[i])) { bad++; this.log(`  DIFFERENZA in ${name} (byte ${pos}-${pos + size - 1})`); }
+          if (!got) { bad++; this.log(`  ${name} (byte ${pos}-${pos + size - 1}): nessuna risposta`); }
+          else if (got.length !== exp.length || got.some((v, i) => v !== exp[i])) {
+            bad++;
+            const diffs = []; for (let i = 0; i < exp.length && diffs.length < 6; i++) if (got[i] !== exp[i]) diffs.push(`[${pos + i}] ${hx(exp[i])}→${got[i] === undefined ? '--' : hx(got[i])}`);
+            this.log(`  ${name} (byte ${pos}-${pos + size - 1}): ${got.length !== exp.length ? 'lunghezza ' + got.length + '/' + exp.length + ' ' : ''}${diffs.join(' ')}`);
+          }
           pos += size;
         }
       }
@@ -871,12 +940,31 @@ const GXMIDI = (() => {
     }
   }
 
+  /* sessione persistente (selettore di memoria, sincronizzazione col pedale) */
+  let shared = null;
+  async function connect({ port, log }) {
+    if (shared && shared.open_) return shared;
+    const gx = new GX(log);
+    await gx.open(port);
+    try { await gx.handshake(); } catch (e) { await gx.bye(); throw e; }
+    shared = gx; return gx;
+  }
+  async function disconnect() { if (shared) { const g = shared; shared = null; try { await g.bye(); } catch (e) {} } }
+  const session = () => (shared && shared.open_) ? shared : null;
   /* API principale */
-  async function sendPatch(tsl, { mode = 'temp', slot, verify = false, patchIndex = 1, port, log, progress }) {
+  async function sendPatch(tsl, { mode = 'temp', slot, verify = false, patchIndex = 1, port, log, progress, select = false, channel = 1 }) {
     const { blocks, name } = patchBlocks(tsl, patchIndex);
-    let base, dest;
+    let base, dest, idx = 0;
     if (mode === 'temp') { base = TEMP_BASE; dest = 'patch corrente (non salvata)'; }
-    else { const idx = slotIndex(slot); base = USER_BASE_1 + (idx - 1) * USER_STEP; dest = 'memoria ' + slotName(idx); }
+    else { idx = slotIndex(slot); base = USER_BASE_1 + (idx - 1) * USER_STEP; dest = 'memoria ' + slotName(idx); }
+    if (shared && shared.open_) return shared.withLock(async () => {
+      const msgs = buildMessages(shared.dev, base, blocks, mode === 'temp');
+      for (let i = 0; i < msgs.length; i++) { await shared.send(msgs[i]); if (progress) progress(i + 1, msgs.length); }
+      await sleep(300);
+      if (verify) { const bad = await shared.verify(base, blocks); log(bad ? `Verifica: ${bad} differenze. Ripeti l'invio.` : 'Verifica OK: i dati sul pedale coincidono.'); }
+      if (select && idx) await shared.selectSlot(idx);
+      return `"${name}" inviato in ${dest}.`;
+    });
     const gx = new GX(log);
     await gx.open(port);
     try {
@@ -884,16 +972,25 @@ const GXMIDI = (() => {
       const msgs = buildMessages(gx.dev, base, blocks, mode === 'temp');
       for (let i = 0; i < msgs.length; i++) { await gx.send(msgs[i]); if (progress) progress(i + 1, msgs.length); }
       await sleep(300);
-      if (verify) { const bad = await gx.verify(base, blocks); log(bad ? `Verifica: ${bad} differenze. Ripeti l'invio.` : 'Verifica OK: i dati sul pedale coincidono.'); }
+      if (verify) {
+        const bad = await gx.verify(base, blocks);
+        if (!bad) log('Verifica OK: i dati sul pedale coincidono.');
+        else if (mode === 'temp') log(`Nota: la patch temporanea riletta differisce in ${bad} blocchi (il pedale può rielaborare quest'area). La patch è stata inviata: controlla a orecchio. Per una copia esatta usa "Salva nella memoria".`);
+        else log(`Verifica: ${bad} differenze. Ripeti l'invio.`);
+      }
+      if (select && idx) await gx.selectSlot(idx);
     } finally { await gx.bye(); }
     return `"${name}" inviato in ${dest}.`;
   }
   async function readSlot(slot, { port, log }) {
     const idx = slotIndex(slot);
-    const gx = new GX(log);
-    await gx.open(port);
     let ps;
-    try { await gx.handshake(); ps = await gx.readPatch(USER_BASE_1 + (idx - 1) * USER_STEP); } finally { await gx.bye(); }
+    if (shared && shared.open_) ps = await shared.withLock(() => shared.readPatch(USER_BASE_1 + (idx - 1) * USER_STEP));
+    else {
+      const gx = new GX(log);
+      await gx.open(port);
+      try { await gx.handshake(); ps = await gx.readPatch(USER_BASE_1 + (idx - 1) * USER_STEP); } finally { await gx.bye(); }
+    }
     const name = String.fromCharCode(...ps['User_patch%common'].slice(0, 16).map(h => parseInt(h, 16))).trimEnd();
     return { name, slot: slotName(idx), tsl: { name: 'BACKUP ' + slotName(idx), formatRev: '0000', device: 'GX-100', data: [[{ memo: JSON.stringify({ memo: '', isToneCentralPatch: false }), paramSet: ps }]] } };
   }
@@ -902,7 +999,7 @@ const GXMIDI = (() => {
     const base = mode === 'temp' ? TEMP_BASE : USER_BASE_1 + (slotIndex(slot) - 1) * USER_STEP;
     return buildMessages(0x10, base, blocks, mode === 'temp');
   }
-  return { sendPatch, readSlot, sysexBytes, supported: () => !!navigator.requestMIDIAccess };
+  return { sendPatch, readSlot, sysexBytes, slotIndex, slotName, connect, disconnect, session, supported: () => !!navigator.requestMIDIAccess };
 })();
 
 
@@ -1101,16 +1198,105 @@ const fileBase = () => ($('pName').value.trim() || 'Preset').replace(/\.tsl$/i, 
 
 /* ---------- MIDI ---------- */
 function mlog(s) { const l = $('midiLog'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
-async function sendMidi(mode) {
+const progress = (i, n) => { if (i === n || i % 10 === 0) mlog(t('sending', i, n)); };
+let scratchBackup = null;   // { slot, tsl, name }
+const midiButtons = ['btnSendTemp', 'btnSendSave', 'btnRestore', 'btnBackup'];
+function lockMidi(on) { for (const id of midiButtons) $(id).disabled = on; if (!on) { if (!current) { $('btnSendTemp').disabled = true; $('btnSendSave').disabled = true; } if (!scratchBackup) $('btnRestore').disabled = true; } }
+/* Prova: scrive nella memoria di prova e la seleziona sul pedale; backup automatico della memoria la prima volta */
+async function tryPatch() {
   if (!current) return;
-  const opts = { mode, slot: $('slot').value, verify: $('verify').checked, log: mlog, progress: (i, n) => { if (i === n || i % 10 === 0) mlog(t('sending', i, n)); } };
-  if (mode === 'user' && !confirm(t('confirmOverwrite', $('slot').value, current.result.names[0]))) return;
-  $('midiLog').textContent = '';
-  for (const id of ['btnSendTemp', 'btnSendSave']) $(id).disabled = true;
-  try { mlog(await GXMIDI.sendPatch(current.result.tsl, opts)); }
-  catch (e) { mlog(t('error') + e.message); }
-  finally { for (const id of ['btnSendTemp', 'btnSendSave']) $(id).disabled = false; }
+  const slot = $('scratch').value.trim();
+  $('midiLog').textContent = ''; lockMidi(true);
+  try {
+    GXMIDI.slotIndex(slot);
+    if (!scratchBackup || scratchBackup.slot !== GXMIDI.slotName(GXMIDI.slotIndex(slot))) {
+      mlog(t('backingUp', slot));
+      const r = await GXMIDI.readSlot(slot, { log: mlog });
+      scratchBackup = r; store.set('scratch', slot);
+      download(`backup_${r.slot}.tsl`, JSON.stringify(r.tsl), 'application/json');
+      mlog(t('readSlot', r.slot, r.name));
+    }
+    mlog(await GXMIDI.sendPatch(current.result.tsl, { mode: 'user', slot, verify: false, select: true, log: mlog, progress }));
+    mlog(t('tryDone', slot)); bankNames = { bank: 0, names: [] }; if (GXMIDI.session()) refreshMem(GXMIDI.slotIndex(slot));
+  } catch (e) { mlog(t('error') + e.message); }
+  finally { lockMidi(false); }
 }
+async function restoreScratch() {
+  if (!scratchBackup) return;
+  $('midiLog').textContent = ''; lockMidi(true);
+  try { mlog(await GXMIDI.sendPatch(scratchBackup.tsl, { mode: 'user', slot: scratchBackup.slot, verify: true, select: true, log: mlog, progress })); mlog(t('restored', scratchBackup.slot, scratchBackup.name)); bankNames = { bank: 0, names: [] }; if (GXMIDI.session()) refreshMem(GXMIDI.slotIndex(scratchBackup.slot)); }
+  catch (e) { mlog(t('error') + e.message); }
+  finally { lockMidi(false); }
+}
+async function savePatch() {
+  if (!current) return;
+  const slot = $('slot').value.trim();
+  if (!confirm(t('confirmOverwrite', slot, current.result.names[0]))) return;
+  $('midiLog').textContent = ''; lockMidi(true);
+  try { mlog(await GXMIDI.sendPatch(current.result.tsl, { mode: 'user', slot, verify: $('verify').checked, select: $('selectAfter').checked, log: mlog, progress })); bankNames = { bank: 0, names: [] }; if (GXMIDI.session()) refreshMem($('selectAfter').checked ? GXMIDI.slotIndex(slot) : memIdx); }
+  catch (e) { mlog(t('error') + e.message); }
+  finally { lockMidi(false); }
+}
+
+/* ---------- selettore di memoria sul pedale ---------- */
+let memIdx = 1, memSession = null;
+function memlog(s) { const l = $('memLog'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
+function memButtons(on) { for (const id of ['bankMinus', 'bankPlus', 'memPrev', 'memNext']) $(id).disabled = !on; document.querySelectorAll('button.sub').forEach(b => b.disabled = !on); $('btnDisconnect').disabled = !on; $('btnConnect').disabled = on; }
+/* tabella del banco attivo: nomi delle memorie 1-4 */
+let bankNames = { bank: 0, names: [] };
+function renderBank(idx) {
+  const bank = Math.floor((idx - 1) / 4) + 1, sub = (idx - 1) % 4 + 1;
+  const tb = $('bankTable').querySelector('tbody');
+  tb.innerHTML = [1, 2, 3, 4].map(n => `<tr data-idx="${(bank - 1) * 4 + n}" class="${n === sub ? 'on' : ''}"><td>${n === 1 ? 'U' + String(bank).padStart(2, '0') : ''}</td><td>${n}</td><td>${(bankNames.bank === bank && bankNames.names[n - 1]) || '…'}</td></tr>`).join('');
+  tb.querySelectorAll('tr').forEach(r => r.onclick = () => gotoMem(+r.dataset.idx));
+}
+async function loadBankNames(idx) {
+  const g = GXMIDI.session(); if (!g) return;
+  const bank = Math.floor((idx - 1) / 4) + 1;
+  if (bankNames.bank === bank && bankNames.names.length === 4) return;
+  const names = [];
+  for (let n = 1; n <= 4; n++) { try { names.push(await g.withLock(() => g.getMemoryName((bank - 1) * 4 + n))); } catch (e) { names.push(''); } }
+  bankNames = { bank, names }; renderBank(idx);
+}
+function showMem(idx, name) {
+  memIdx = idx;
+  const bank = Math.floor((idx - 1) / 4) + 1, sub = (idx - 1) % 4 + 1;
+  $('memSlot').textContent = GXMIDI.slotName(idx); $('bankDisp').textContent = 'U' + String(bank).padStart(2, '0');
+  document.querySelectorAll('button.sub').forEach(b => b.classList.toggle('on', +b.dataset.sub === sub));
+  if (name !== undefined) $('memName').textContent = name;
+  renderBank(idx);
+}
+async function refreshMem(idx) {
+  const g = GXMIDI.session(); if (!g) return;
+  try { const name = await g.withLock(() => g.getMemoryName(idx)); showMem(idx, name); } catch (e) { showMem(idx); }
+  await loadBankNames(idx);
+}
+async function gotoMem(idx) {
+  const g = GXMIDI.session(); if (!g) return;
+  idx = Math.max(1, Math.min(200, idx));
+  try { await g.withLock(async () => { await g.selectSlot(idx); }); await refreshMem(idx); }
+  catch (e) { memlog(t('error') + e.message); }
+}
+async function connectPedal() {
+  $('memLog').textContent = '';
+  try {
+    const g = await GXMIDI.connect({ log: memlog });
+    memButtons(true); $('memState').textContent = t('connected');
+    g.onProgramChange = idx => { if ($('follow').checked) refreshMem(idx); };
+    const cur = await g.withLock(() => g.getMemory()); if (cur) await refreshMem(cur);
+    g.startPolling(1000, idx => { if ($('follow').checked && idx !== memIdx) refreshMem(idx); });
+  } catch (e) { memlog(t('error') + e.message); }
+}
+async function disconnectPedal() { await GXMIDI.disconnect(); memButtons(false); $('memState').textContent = t('notConnected'); }
+$('btnConnect').onclick = connectPedal;
+$('btnDisconnect').onclick = disconnectPedal;
+$('bankMinus').onclick = () => gotoMem(memIdx - 4);
+$('bankPlus').onclick = () => gotoMem(memIdx + 4);
+$('memPrev').onclick = () => gotoMem(memIdx - 1);
+$('memNext').onclick = () => gotoMem(memIdx + 1);
+document.querySelectorAll('button.sub').forEach(b => b.onclick = () => gotoMem(Math.floor((memIdx - 1) / 4) * 4 + (+b.dataset.sub)));
+$('follow').onchange = () => { const g = GXMIDI.session(); if (g && $('follow').checked) g.withLock(() => g.getMemory()).then(i => i && refreshMem(i)); };
+window.addEventListener('beforeunload', () => { GXMIDI.disconnect(); });
 
 /* ---------- init ---------- */
 $('apiKey').onchange = () => store.set('key.' + $('engine').value, $('apiKey').value.trim());
@@ -1127,12 +1313,15 @@ $('btnRebuild').onclick = () => { try { const spec = JSON.parse($('specOut').val
 $('btnSaveTsl').onclick = () => download(fileBase() + '.tsl', current.result.tslText, 'application/json');
 $('btnSaveMd').onclick = () => download(fileBase() + '_notes.md', $('notes').value, 'text/markdown');
 $('btnSaveSpec').onclick = () => download(fileBase() + '_spec.json', JSON.stringify(current.spec, null, 2), 'application/json');
-$('btnSendTemp').onclick = () => sendMidi('temp');
-$('btnSendSave').onclick = () => sendMidi('user');
+$('btnSendTemp').onclick = tryPatch;
+$('btnSendSave').onclick = savePatch;
+$('btnRestore').onclick = restoreScratch;
+$('scratch').value = store.get('scratch', 'U50-4');
 $('btnBackup').onclick = async () => {
-  $('midiLog').textContent = '';
+  $('midiLog').textContent = ''; lockMidi(true);
   try { const r = await GXMIDI.readSlot($('slot').value, { log: mlog }); download(`backup_${r.slot}.tsl`, JSON.stringify(r.tsl), 'application/json'); mlog(t('readSlot', r.slot, r.name)); }
   catch (e) { mlog(t('error') + e.message); }
+  finally { lockMidi(false); }
 };
 if (!GXMIDI.supported()) mlog(t('noMidi'));
 </script>
